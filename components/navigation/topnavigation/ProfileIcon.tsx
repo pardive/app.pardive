@@ -31,7 +31,19 @@ export default function ProfileIcon({ className }: Props) {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  // ----- popover positioning (fixed so it never hides behind the shell)
+  // ---- shared classes (match Global Create menu items)
+  const MENU_ITEM_TEXT = 'text-sm leading-5';      // 14px
+  const MENU_ITEM_PAD  = 'px-3 py-2';
+  const MENU_ITEM_BASE =
+    'rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 ' + MENU_ITEM_TEXT + ' ' + MENU_ITEM_PAD;
+
+  // header (matches your CREATE header look)
+  const HEADER_CLS =
+    'rounded-t-lg -m-1 mb-1 px-3 py-2.5 text-[11px] uppercase tracking-wider ' +
+    'font-semibold text-neutral-500 bg-neutral-50/90 dark:bg-neutral-800/70 ' +
+    'border-b border-neutral-200/80 dark:border-neutral-800';
+
+  // ----- popover positioning
   const positionMenu = () => {
     const r = anchorRef.current?.getBoundingClientRect();
     if (!r) return;
@@ -44,25 +56,13 @@ export default function ProfileIcon({ className }: Props) {
     setMenuPos({ top, left });
   };
 
-  const openMenu = () => {
-    positionMenu();
-    setMenuOpen(true);
-  };
+  const openMenu = () => { positionMenu(); setMenuOpen(true); };
   const closeMenu = () => setMenuOpen(false);
 
-  const onAnchorEnter = () => {
-    if (hoverCloseId.current) window.clearTimeout(hoverCloseId.current);
-    openMenu();
-  };
-  const onAnchorLeave = () => {
-    hoverCloseId.current = window.setTimeout(() => setMenuOpen(false), 120);
-  };
-  const onMenuEnter = () => {
-    if (hoverCloseId.current) window.clearTimeout(hoverCloseId.current);
-  };
-  const onMenuLeave = () => {
-    hoverCloseId.current = window.setTimeout(() => setMenuOpen(false), 120);
-  };
+  const onAnchorEnter = () => { if (hoverCloseId.current) window.clearTimeout(hoverCloseId.current); openMenu(); };
+  const onAnchorLeave = () => { hoverCloseId.current = window.setTimeout(() => setMenuOpen(false), 120); };
+  const onMenuEnter = () => { if (hoverCloseId.current) window.clearTimeout(hoverCloseId.current); };
+  const onMenuLeave = () => { hoverCloseId.current = window.setTimeout(() => setMenuOpen(false), 120); };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -135,17 +135,12 @@ export default function ProfileIcon({ className }: Props) {
         />
       </div>
 
-      {/* Popover (fixed so it overlays everything) */}
+      {/* Popover */}
       <div
         id="profile-popover"
         onMouseEnter={onMenuEnter}
         onMouseLeave={onMenuLeave}
-        style={{
-          position: 'fixed',
-          top: `${menuPos.top}px`,
-          left: `${menuPos.left}px`,
-          zIndex: 1_000_000,
-        }}
+        style={{ position: 'fixed', top: `${menuPos.top}px`, left: `${menuPos.left}px`, zIndex: 1_000_000 }}
         className={clsx(
           'w-56 rounded-lg border bg-white/95 backdrop-blur shadow-xl',
           'dark:bg-neutral-900/95 dark:border-neutral-800',
@@ -153,26 +148,29 @@ export default function ProfileIcon({ className }: Props) {
           menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >
-        {/* My profile: text button + separate external icon (independent hover) */}
+        {/* HEADER */}
+        <div className={HEADER_CLS}>ACCOUNT</div>
+
+        {/* My profile: text button + external icon */}
         <div className="flex items-stretch gap-1">
           <button
             type="button"
             onClick={openProfileModal}
-            className="flex-1 inline-flex items-center gap-2 px-3 py-2 text-[13px] rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700"
+            className={clsx('flex-1 inline-flex items-center gap-2', MENU_ITEM_BASE)}
           >
             <IdCard className="w-4 h-4" />
             <span className="text-left">My profile</span>
           </button>
-        <Link
-  href="/profile"
-  title="Open full page"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="grid place-items-center rounded-lg px-2 hover:bg-neutral-200 dark:hover:bg-neutral-700"
->
-  <ExternalLink className="w-4 h-4" />
-</Link>
 
+          <Link
+            href="/profile"
+            title="Open full page"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={clsx('grid place-items-center rounded-lg', MENU_ITEM_PAD)}
+          >
+            <ExternalLink className="w-4 h-4" />
+          </Link>
         </div>
 
         <MenuItem href="/preferences" icon={<Settings className="w-4 h-4" />}>
@@ -183,14 +181,14 @@ export default function ProfileIcon({ className }: Props) {
 
         <button
           onClick={() => (window.location.href = '/')}
-          className="w-full text-left px-3 py-2 text-[13px] flex items-center gap-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700"
+          className={clsx('w-full text-left flex items-center gap-2', MENU_ITEM_BASE)}
         >
           <LogOut className="w-4 h-4" />
           Log out
         </button>
       </div>
 
-      {/* Quick Profile modal (re-uses your dedicated component) */}
+      {/* Quick Profile modal */}
       <ProfileQuickModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -220,7 +218,7 @@ function MenuItem({
   return (
     <Link
       href={href}
-      className="block px-3 py-2 text-[13px] rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700"
+      className="block rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 px-3 py-2 text-sm leading-5"
     >
       <span className="inline-flex items-center gap-2">
         {icon}

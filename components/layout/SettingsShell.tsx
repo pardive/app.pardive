@@ -1,4 +1,3 @@
-// components/layout/SettingsShell.tsx
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -24,7 +23,6 @@ import AltmanChat from '@/components/settings/AltmanChat';
 const PERSIST_KEY = 'saltify-stick-collapsed';
 const HELP_VIS_KEY = 'saltify-help-visible';
 
-// fine-tune alignment with your tabs divider
 const PARTITION_OFFSET = 14;
 
 export default function SettingsShell({
@@ -71,11 +69,17 @@ export default function SettingsShell({
   const safeGap =
     typeof GRID_GAP === 'number' ? `${GRID_GAP}px` : GRID_GAP || '8px';
 
-  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
-  const safeSidebar =
-    typeof sidebarWidth === 'number' ? `${sidebarWidth}px` : sidebarWidth || '220px';
+  // LEFT column responds to collapse
+  const leftWidth = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
+  const safeLeft =
+    typeof leftWidth === 'number' ? `${leftWidth}px` : leftWidth || '220px';
 
-  const gridCols = helpVisible ? `${safeSidebar} 1fr ${safeSidebar}` : `${safeSidebar} 1fr`;
+  // RIGHT rail should NOT collapse — keep it fixed at expanded width
+  const rightWidth = SIDEBAR_EXPANDED;
+  const safeRight =
+    typeof rightWidth === 'number' ? `${rightWidth}px` : rightWidth || '220px';
+
+  const gridCols = helpVisible ? `${safeLeft} 1fr ${safeRight}` : `${safeLeft} 1fr`;
 
   const helpUrl = useMemo(() => {
     const raw = (summary?.title || 'settings').toLowerCase();
@@ -149,14 +153,14 @@ export default function SettingsShell({
           </div>
         </main>
 
-        {/* RIGHT RAIL (row 2, col 3) */}
+        {/* RIGHT RAIL (row 2, col 3) — fixed width, never collapses */}
         {helpVisible && (
           <aside
             className={clsx(
               'bg-white dark:bg-ui-pageDark rounded-md p-0 h-full min-h-0',
               'shadow-sm flex flex-col relative overflow-visible'
             )}
-            style={{ width: safeSidebar }}
+            style={{ width: safeRight }}
           >
             {/* Horizontal partition only */}
             <div
@@ -195,10 +199,7 @@ export default function SettingsShell({
 
             {/* Help content */}
             <div className="flex-1 min-h-0">
-              <HelpPanel
-                summary={summary}
-                tabsBarHeight={tabsBarHeight + PARTITION_OFFSET}
-              />
+              <HelpPanel summary={summary} tabsBarHeight={tabsBarHeight + PARTITION_OFFSET} />
             </div>
           </aside>
         )}

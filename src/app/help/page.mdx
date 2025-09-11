@@ -1,0 +1,149 @@
+# Help Center
+
+Welcome to the Help Center. Use the search box above (press `/` to focus) or browse the sections below.
+
+---
+
+## Quick links
+
+- **Documentation** → `/help/docs`
+- **My Cases** → `/help/cases`
+- **Ideas** (feature requests) → `/help/ideas`
+- **Learnings** (how-tos & tips) → `/help/learnings`
+- **Release notes** → `/help/docs/release-notes`
+- **Status page** → `/help/status`
+
+---
+
+## Getting started checklist
+
+1. **Create your workspace** → set name, region, locale, and primary domain.
+2. **Invite your team** → assign roles (Owner, Admin, Member).
+3. **Brand your account** → upload logo, set colors & typography.
+4. **Connect data** → create your first Data Table (contacts, companies, etc.).
+5. **Build a page or form** → publish to a test subdomain.
+6. **Set up automations** → send webhooks or sync to external apps.
+7. **Review billing** → choose a plan, add payment method.
+
+> **Tip:** Keep staging and production separate. Use a staging subdomain for internal testing.
+
+---
+
+## Workspace & Settings
+
+### Regions
+Choose where core resources live (US/EU). Region affects data residency and latency.
+
+**Change region**
+1. Go to **Settings → Workspace → Regions**  
+2. Select **United States** or **European Union**  
+3. Review the migration summary → **Confirm**
+
+> **Note:** Region changes can trigger brief maintenance windows.
+
+### Default Locale
+Controls date formats, number formats, and default language labels.
+
+### Primary Domain
+The canonical root domain used to compose product sub-domains.
+
+### Members & Roles
+- **Owner:** billing + all permissions  
+- **Admin:** manage users, settings, content  
+- **Member:** create & edit content within assigned modules
+
+---
+
+## Branding
+
+Upload your **logo**, pick **colors**, and set **font** preferences. Branded assets appear in headers, footers, and public pages.
+
+**Recommended sizes**
+- Logo (SVG preferred), 24–48px height for nav
+- Favicon 32×32, 48×48
+- Social/OG image 1200×630
+
+---
+
+## Build your first page / form
+
+1. Go to **Create → Page** (or **Form**)  
+2. Pick a template or start blank  
+3. Configure **layout grid** and **sections**  
+4. Drag components: **Text, Image, Video, HTML/JS**  
+5. Connect to a **Data Table** (for submissions)  
+6. **Preview**, then **Publish** to `your-subdomain.example.com`
+
+> **Troubleshooting publish:** If DNS isn’t ready, publishing may show a temporary preview URL.
+
+---
+
+## Data & Automations
+
+### Data Tables
+Structured storage for submissions and records.
+
+- **Attributes/Fields:** text, email, phone, select, date, number
+- **Unique keys:** email, mobile, external ID
+
+### Automations
+Trigger actions on events (submit, create, update).
+
+- **Actions:** Webhook (REST), Upsert, Delete, Notify
+- **Retries:** exponential backoff (up to 3 attempts)
+- **Logs:** view success/failure per run
+
+---
+
+## Billing & Plans
+
+- **Free/Trial:** limited records & automation runs
+- **Pro:** custom domains, higher limits, priority support
+- **Enterprise:** SSO, data residency options, SLA
+
+> Update payment method at **Settings → Billing**. Invoices are available as PDFs.
+
+---
+
+## Security
+
+- Role-based access control (RBAC)  
+- Audit trails for settings and publishing  
+- SSO/SAML (Enterprise)
+
+---
+
+## Troubleshooting
+
+- **I can’t see the sidebar.**  
+  Ensure your viewport width ≥ 1024px or open the sidebar from the top-left menu.
+
+- **Publishing failed.**  
+  Check DNS status for the target domain; re-publish after propagation.
+
+- **Form submissions missing.**  
+  Confirm the form is connected to the intended Data Table and fields are mapped.
+
+- **Automation not firing.**  
+  Verify the trigger event and inspect the run log for error codes.
+
+---
+
+## FAQ
+
+**Can I move workspaces between regions?**  
+Yes—use **Settings → Workspace → Regions**. Expect a short maintenance window.
+
+**Do you support custom domains?**  
+Yes on Pro+. Add a domain, verify DNS (CNAME), then publish.
+
+**Where can I export my data?**  
+From the Data Table: **More → Export CSV**. API access is available on Pro+.
+
+---
+
+## Need more help?
+
+- Open a ticket in **My Cases** → `/help/cases`  
+- Ask the community in **Ideas** → `/help/ideas`  
+- Contact support: `support@example.com`

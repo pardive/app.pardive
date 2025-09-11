@@ -1,15 +1,23 @@
-// next.config.ts
 import path from 'path';
 import type { NextConfig } from 'next';
-import type { Configuration as WebpackConfig } from 'webpack';
+import createMDX from '@next/mdx';
 
-const nextConfig: NextConfig = {
-  // ✅ Let builds pass even if ESLint / TS have issues (we’ll clean later)
+const withMDX = createMDX({
+  extension: /\.mdx?$/,
+  options: {
+    // remarkPlugins: [],
+    // rehypePlugins: [],
+  },
+});
+
+const baseConfig: NextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
 
-  webpack(config: WebpackConfig) {
-    // keep your @ -> src alias
+  // MDX pages
+  pageExtensions: ['ts', 'tsx', 'mdx'],
+
+  webpack(config) {
     config.resolve = config.resolve ?? {};
     config.resolve.alias = {
       ...(config.resolve.alias ?? {}),
@@ -19,4 +27,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withMDX(baseConfig);

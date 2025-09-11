@@ -1,0 +1,27 @@
+# Regions
+
+Choose where core resources live (US/EU). Data residency rules apply.
+
+## When to use
+- You have compliance or contractual requirements (e.g., EU residency).
+- You want lower latency for the majority of your users.
+
+## How to change region
+1. Go to **Settings → Workspace → Regions**.
+2. Pick a region: **United States** or **European Union**.
+3. Review the migration summary.
+4. Click **Confirm**.
+
+> Note: Region changes may trigger background migrations and brief maintenance windows. We’ll email owners before the cutover.
+
+## What moves with region
+- Primary storage and backups  
+- Search indexes and analytics caches  
+- Long-term logs (retention unchanged)
+
+## FAQs
+**Does region affect user sign-in?**  
+Sign-in endpoints are global; only stored resources move.
+
+**Can I set per-project regions?**  
+Not yet. Regions are workspace-wide today.

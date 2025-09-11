@@ -120,15 +120,15 @@ button {
 
     /* Primary (Dark) */
     --btn-primary-bg:       #4A4A4A;
-    --btn-primary-hover:    #5c5c5c;   /* slightly lighter */
-    --btn-primary-border:   #4A4A4A;   /* 1pt */
+    --btn-primary-hover:    #5c5c5c;
+    --btn-primary-border:   #4A4A4A;
     --btn-primary-text:     #ffffff;
 
     /* Secondary (Dark) */
     --btn-secondary-bg:     transparent;
-    --btn-secondary-hover:  #2f2f2f;   /* dark hover surface */
-    --btn-secondary-border: #ffffff;   /* 1pt */
-    --btn-secondary-text:   #f3f4f6;   /* light gray */
+    --btn-secondary-hover:  #2f2f2f;
+    --btn-secondary-border: #ffffff;
+    --btn-secondary-text:   #f3f4f6;
 
     /* Optional border color alias */
     --border-color: #374151; /* gray-700 in dark */
@@ -151,64 +151,42 @@ button {
 /* 🧱 Components                                                              */
 /* -------------------------------------------------------------------------- */
 @layer components {
-  /* ── Saltify Table – header/hover unify + crisp checkboxes ────────────── */
-  /* If you add className="table-saltify" to a table, it picks these styles. */
-
-  /* Header background = same as row hover surface */
+  /* Saltify Table */
   .table-saltify thead th {
     background-color: var(--hover-bg);
-    color: #111827;                 /* gray-900 */
+    color: #111827;
   }
   .dark .table-saltify thead th {
     background-color: var(--hover-bg-dark);
-    color: #e5e7eb;                 /* gray-200 */
-    border-bottom-color: #374151;   /* gray-700 */
+    color: #e5e7eb;
+    border-bottom-color: #374151;
   }
+  .table-saltify tbody tr:hover { background-color: var(--hover-bg); }
+  .dark .table-saltify tbody tr:hover { background-color: var(--hover-bg-dark); }
+  .table-saltify tbody tr { border-bottom: 1px solid var(--border-color); }
+  .dark .table-saltify tbody tr { border-bottom: 1px solid #374151; }
+  .table-saltify thead th, .table-saltify tbody td { @apply align-middle; }
 
-  /* Row hover = same as header */
-  .table-saltify tbody tr:hover {
-    background-color: var(--hover-bg);
-  }
-  .dark .table-saltify tbody tr:hover {
-    background-color: var(--hover-bg-dark);
-  }
-/* Row separators — match header borders */
-.table-saltify tbody tr {
-  border-bottom: 1px solid var(--border-color); /* light mode: same as header */
-}
-
-.dark .table-saltify tbody tr {
-  border-bottom: 1px solid #374151; /* dark mode: same as header/footer */
-}
-
-  /* Keep cells nicely aligned */
-  .table-saltify thead th,
-  .table-saltify tbody td {
-    @apply align-middle;
-  }
-
-  /* Crisp square checkbox (unchecked/checked/indeterminate) */
-  .table-saltify input[type="checkbox"]{
+  .table-saltify input[type="checkbox"] {
     -webkit-appearance: none;
     appearance: none;
     position: relative;
     width: 14px;
     height: 14px;
-    border: 1.5px solid #9ca3af;   /* gray-400 – visible when unchecked */
+    border: 1.5px solid #9ca3af;
     border-radius: 3px;
     background: #fff;
     display: inline-block;
     vertical-align: middle;
   }
-  .table-saltify input[type="checkbox"]:hover{
-    box-shadow: 0 0 0 3px rgba(0,153,102,.10); /* subtle hover ring using primary hue */
+  .table-saltify input[type="checkbox"]:hover {
+    box-shadow: 0 0 0 3px rgba(0,153,102,.10);
   }
-  /* Checked */
-  .table-saltify input[type="checkbox"]:checked{
-    background: #606060;       /* graphite (light black) */
-    border-color: #606060;       /* graphite (light black) */
+  .table-saltify input[type="checkbox"]:checked {
+    background: #606060;
+    border-color: #606060;
   }
-  .table-saltify input[type="checkbox"]:checked::after{
+  .table-saltify input[type="checkbox"]:checked::after {
     content: "";
     position: absolute;
     left: 3px; top: 1px;
@@ -217,92 +195,104 @@ button {
     border-top: 0; border-left: 0;
     transform: rotate(45deg);
   }
-  /* Indeterminate (some selected) – clear black dash */
-  .table-saltify input[type="checkbox"]:indeterminate{
+  .table-saltify input[type="checkbox"]:indeterminate {
     background: #606060;
     border-color: #606060;
   }
-  .table-saltify input[type="checkbox"]:indeterminate::after{
+  .table-saltify input[type="checkbox"]:indeterminate::after {
     content: "";
     position: absolute;
     left: 2px; right: 2px;
     top: 50%; height: 2px;
     transform: translateY(-50%);
-    background: #ffffff;  /* near-black dash so it’s visible in light mode */
+    background: #ffffff;
     border-radius: 1px;
   }
-  /* Dark base for unchecked + dark indeterminate dash color */
-  .dark .table-saltify input[type="checkbox"]{
+  .dark .table-saltify input[type="checkbox"] {
     background: #111827;
-    border-color: #6b7280;           /* gray-500 */
+    border-color: #6b7280;
   }
   .dark .table-saltify input[type="checkbox"]:checked,
-  .dark .table-saltify input[type="checkbox"]:indeterminate{
+  .dark .table-saltify input[type="checkbox"]:indeterminate {
     background: var(--btn-primary-bg);
     border-color: var(--btn-primary-bg);
   }
-  .dark .table-saltify input[type="checkbox"]:indeterminate::after{
+  .dark .table-saltify input[type="checkbox"]:indeterminate::after {
     background: #ffffff;
   }
 
-  /* ── Saltify panel (collapsed submenu / popovers) ─────────────────────── */
-  .saltify-panel {
-    @apply rounded-lg border shadow-2xl overflow-hidden;
-    @apply bg-white border-gray-200;
-  }
-  .dark .saltify-panel {
-    @apply bg-ui-navigationDark border-ui-borderDark;
-  }
-  .saltify-panel__title {
-    @apply px-3 py-2 text-xs font-semibold uppercase tracking-wide;
-    @apply text-gray-500 bg-gray-50 border-b border-gray-200;
-  }
-  .dark .saltify-panel__title {
-    @apply text-gray-300 bg-ui-navigationDark border-ui-borderDark;
-  }
-  .saltify-panel__item {
-    @apply w-full flex items-center gap-3 px-3 py-2 text-left text-[15px] font-medium;
-    @apply text-gray-900 hover:bg-gray-100;
-  }
-  .dark .saltify-panel__item {
-    @apply text-gray-100;
-  }
-  .dark .saltify-panel__item:hover {
-    background-color: var(--hover-bg-dark);
-  }
+  /* Saltify Panel */
+  .saltify-panel { @apply rounded-lg border shadow-2xl overflow-hidden bg-white border-gray-200; }
+  .dark .saltify-panel { @apply bg-ui-navigationDark border-ui-borderDark; }
+  .saltify-panel__title { @apply px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 bg-gray-50 border-b border-gray-200; }
+  .dark .saltify-panel__title { @apply text-gray-300 bg-ui-navigationDark border-ui-borderDark; }
+  .saltify-panel__item { @apply w-full flex items-center gap-3 px-3 py-2 text-left text-[15px] font-medium text-gray-900 hover:bg-gray-100; }
+  .dark .saltify-panel__item { @apply text-gray-100; }
+  .dark .saltify-panel__item:hover { background-color: var(--hover-bg-dark); }
 
-  /* ── Unified lightweight select (used in ModuleListView pagination) ──── */
+  /* Saltify Select */
   .saltify-select {
-    @apply h-8 rounded-md px-3 text-sm
-           border border-gray-300 bg-white text-gray-900
-           focus:outline-none focus:ring-2 focus:ring-[var(--btn-primary-bg)];
+    @apply h-8 rounded-md px-3 text-sm border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--btn-primary-bg)];
   }
-  .dark .saltify-select {
-    @apply border-[#374151] text-gray-100;
-    background-color: #272727;          /* matches sidebar dark */
-  }
+  .dark .saltify-select { @apply border-[#374151] text-gray-100; background-color: #272727; }
 
-  /* Optional alias: keep old ".saltify-table" behaving like ".table-saltify" */
+  /* Old alias */
   .saltify-table thead th { background-color: var(--hover-bg); color: #111827; }
   .saltify-table tbody tr:hover { background-color: var(--hover-bg); }
   .dark .saltify-table thead th { background-color: var(--hover-bg-dark); color: #e5e7eb; border-bottom-color: #374151; }
   .dark .saltify-table tbody tr:hover { background-color: var(--hover-bg-dark); }
-}
-/* Alias row separators — match header borders */
-.saltify-table tbody tr {
-  border-bottom: 1px solid var(--border-color);
-}
 
-.dark .saltify-table tbody tr {
-  border-bottom: 1px solid #374151;
-}
+  /* Help Docs Layout */
+  :root { --navbar-h: 64px; }
 
+  .help-docs {
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    padding-inline: 1rem !important;
+    padding-top: 16px !important; /* small universal breathing room */
+  }
+  .with-fixed-nav .help-docs {
+    padding-top: calc(var(--navbar-h) + 8px) !important;
+  }
+
+  .help-docs__grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    column-gap: 1rem;
+    align-items: start;
+  }
+
+  .help-docs__sidebar {
+    position: sticky;
+    top: 16px;
+    height: calc(100dvh - 32px);
+    overflow: auto;
+    padding: 0.5rem 0.75rem;
+    width: 260px;
+    min-width: 260px;
+    z-index: 10;
+  }
+  .with-fixed-nav .help-docs__sidebar {
+    top: calc(var(--navbar-h) + 8px);
+    height: calc(100dvh - var(--navbar-h) - 16px);
+  }
+
+  .help-docs__content {
+    min-width: 0;
+    z-index: 0;
+  }
+
+  .help-docs__content h1,
+  .help-docs__content h2,
+  .help-docs__content h3 { margin: 0.75rem 0 0.5rem; }
+  .help-docs__content p,
+  .help-docs__content li { margin-bottom: 0.5rem; line-height: 1.5; }
+}
 
 /* -------------------------------------------------------------------------- */
 /* 🛟 Utilities / Escape hatches                                              */
 /* -------------------------------------------------------------------------- */
 @layer utilities {
-  /* Replace legacy navy utilities globally in dark mode */
   .dark .bg-\[\#0f172a\],
   .dark .bg-\[\#0b2743\],
   .dark .bg-slate-900 {
