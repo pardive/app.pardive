@@ -1,4 +1,4 @@
-// Product Docs generator with AI + local fallback.
+// Product Docs generator with AI + local fallback + batching
 // Output: docs/product-docs/**
 // Run: npm run docs:product
 
@@ -22,7 +22,7 @@ if (process.env.PRODUCT_DOCS_LIGHT === "1") {
   console.log("⚙️  Running in LIGHT mode caps.");
 }
 
-// ---------- OpenAI client (optional) ----------
+// ---------- OpenAI client ----------
 let openai = null;
 let aiAvailable = !!process.env.OPENAI_API_KEY;
 if (aiAvailable) {
@@ -84,7 +84,7 @@ function detectRouteFromFile(f) {
   if (p.includes("/src/app/")) {
     let seg = p.split("/src/app/")[1].replace(/\/page\.(t|j)sx?$/, "");
     if (seg.endsWith("/index")) seg = seg.slice(0, -6);
-    seg = seg.replace(/\/\(.*?\)\//g, "/"); // strip group segments
+    seg = seg.replace(/\/\(.*?\)\//g, "/");
     seg = seg.replace(/\[[^\]]+\]/g, ":param");
     return "/" + seg.replace(/^\/+/, "");
   }
@@ -145,7 +145,7 @@ _Last updated: ${nowISO()}_
 - Open **${route}**.
 - Click visible buttons and ensure they respond.
 - If a form exists, try submitting with valid and invalid data.
-- Check if any list or table loads (this hints at server data).
+- Check if any list or table loads.
 - Refresh page to ensure it still works.
 
 _File: \`${file}\` (summary generated without AI due to rate limits)_`;
@@ -159,50 +159,26 @@ _Last updated: ${nowISO()}_
 ## TL;DR
 - ${CFG.projectName} is a web app with a Next.js frontend and APIs on the server.
 - Users can visit pages like: ${pages.slice(0, 5).join(", ")}${pages.length > 5 ? ", ..." : ""}.
-- The system likely uses forms, buttons, and API calls to create and view data.
-- These docs were generated in **local fallback mode** (AI rate limit hit), so they are approximate.
+- Docs generated in **fallback mode** (AI unavailable).
 
 ## What it is
-A web application that provides pages for users to interact with (view info, fill forms, navigate), with a backend that stores and retrieves data.
-
-## Main Features (likely)
-- Pages that show information and accept inputs.
-- Some pages submit forms to the server.
-- Data is stored and retrieved via APIs.
+A web application providing pages for users with backend + database support.
 
 ## How the system flows
-1. User opens a page in the browser.
-2. The page shows UI (headings, forms, buttons).
-3. On actions (submit/click), it calls APIs on the server.
-4. Server reads/writes the database, returns results to show on the page.
+1. User opens a page.
+2. Page shows UI (forms, buttons).
+3. User actions trigger API calls.
+4. Server reads/writes the database.
 
-## Security basics (baseline)
-- Use HTTPS in production.
-- Protect private pages behind login.
-- Validate inputs on both frontend and backend.
-
-## How to run locally (typical)
-- Install Node 20+ and run \`npm install\`.
-- Start dev server: \`npm run dev\`.
-- Open \`http://localhost:3000\`.
-
-## How we deploy (typical)
-- Frontend: Vercel.
-- Backend: hosted Node server (e.g., Railway).
-- Database: a hosted Postgres (e.g., Supabase).
-
-## Recently changed
-Not detected (AI fallback mode).
-
-## Counts (rough)
-- Frontend files sampled: ${frontCount}
-- Backend files sampled: ${backCount}
-- Data/SQL files sampled: ${dataCount}
+## Counts
+- Frontend files: ${frontCount}
+- Backend files: ${backCount}
+- Data files: ${dataCount}
 `;
 }
 
 function localCodeMarkdown(title, items) {
-  const lines = items.slice(0, 12).map(({ file, code }) => {
+  const lines = items.slice(0, 10).map(({ file, code }) => {
     const s = quickStats(code);
     return `- \`${file}\` — forms:${s.forms}, inputs:${s.inputs}, buttons:${s.buttons}, apiCalls:${s.apiCalls}`;
   }).join("\n");
@@ -210,14 +186,9 @@ function localCodeMarkdown(title, items) {
 
 _Last updated: ${nowISO()}_
 
-This section was generated without AI (rate limit). It lists files and rough UI/data hints.
+Generated without AI (rate limit). Rough counts:
 
-${lines || "- No files sampled."}
-
-**How to test:**
-- Open pages that use these files.
-- Try basic actions: click buttons, submit forms, reload pages.
-- Watch network requests in DevTools to see API calls.`;
+${lines || "- No files"} `;
 }
 
 // ---------- collect files ----------
@@ -246,32 +217,54 @@ for (const f of allFiles) {
   }
 }
 
-// ---------- generate OVERVIEW ----------
+// ---------- OVERVIEW ----------
 ensureDir(OUT);
 
-let overviewMd = await ask("Write a simple product docs overview.") // simplified prompt for brevity
+let overviewMd = await ask("Write a simple product docs overview for the project.") 
 if (!overviewMd) {
   const routes = pageFiles.map(detectRouteFromFile);
   overviewMd = localOverviewMarkdown(routes, frontend.length, backend.length, data.length);
 }
 fs.writeFileSync(path.join(OUT, "index.md"), overviewMd);
 
-// ---------- generate PAGES ----------
+// ---------- PAGES (BATCH MODE) ----------
 const PAGES_DIR = path.join(OUT, "pages");
 ensureDir(PAGES_DIR);
 
 const pageTOC = [];
-for (const f of pageFiles) {
-  const code = readFileLimited(path.join(ROOT, f), limits.maxBytesPerFile);
-  const route = detectRouteFromFile(f);
-  pageTOC.push(route);
+const BATCH_SIZE = 5;
 
-  let md = await ask(`Summarize this Next.js page in simple English:\n\n${code}`);
-  if (!md) md = localPageMarkdown(route, f, code);
+for (let i = 0; i < pageFiles.length; i += BATCH_SIZE) {
+  const batchFiles = pageFiles.slice(i, i + BATCH_SIZE);
+  const batchData = batchFiles.map(f => {
+    const code = readFileLimited(path.join(ROOT, f), limits.maxBytesPerFile);
+    const route = detectRouteFromFile(f);
+    return { route, file: f, code };
+  });
 
-  const destDir = path.join(PAGES_DIR, route === "/" ? "_root" : route);
-  ensureDir(destDir);
-  fs.writeFileSync(path.join(destDir, "index.md"), md);
+  const batchPrompt = `
+Summarize these Next.js pages for a non-technical reader.
+Return one Markdown section per page (start with "# [ROUTE] Page").
+
+PAGES:
+${batchData.map(p => `ROUTE: ${p.route}\nFILE: ${p.file}\nCODE:\n${p.code}`).join("\n\n---\n\n")}
+`;
+
+  let batchMd = await ask(batchPrompt);
+  if (!batchMd) {
+    batchMd = batchData.map(p => localPageMarkdown(p.route, p.file, p.code)).join("\n\n---\n\n");
+  }
+
+  // Split by "# " headers
+  const summaries = batchMd.split(/^# /m).filter(Boolean).map(s => "# " + s.trim());
+
+  summaries.forEach((md, idx) => {
+    const { route } = batchData[idx];
+    pageTOC.push(route);
+    const destDir = path.join(PAGES_DIR, route === "/" ? "_root" : route);
+    ensureDir(destDir);
+    fs.writeFileSync(path.join(destDir, "index.md"), md);
+  });
 }
 
 fs.writeFileSync(
@@ -279,17 +272,20 @@ fs.writeFileSync(
   `# Pages — Table of Contents (Auto-generated)\n\n${pageTOC.sort().map(r => `- ${r}`).join("\n")}\n`
 );
 
-// ---------- generate CODE PAGES ----------
+// ---------- CODE (frontend/backend/data in 3 requests) ----------
 const CODE_DIR = path.join(OUT, "code");
 ensureDir(CODE_DIR);
 
-const frontMd = localCodeMarkdown("Frontend (UI & Components)", frontend);
-fs.writeFileSync(path.join(CODE_DIR, "frontend.md"), frontMd);
+const frontendMd = (await ask("Summarize frontend files:\n" + frontend.map(f => f.file).join("\n"))) 
+  || localCodeMarkdown("Frontend", frontend);
+fs.writeFileSync(path.join(CODE_DIR, "frontend.md"), frontendMd);
 
-const backMd = localCodeMarkdown("Backend (APIs & Logic)", backend);
-fs.writeFileSync(path.join(CODE_DIR, "backend.md"), backMd);
+const backendMd = (await ask("Summarize backend files:\n" + backend.map(f => f.file).join("\n"))) 
+  || localCodeMarkdown("Backend", backend);
+fs.writeFileSync(path.join(CODE_DIR, "backend.md"), backendMd);
 
-const dataMd = localCodeMarkdown("Data Model (Supabase/Postgres)", data);
+const dataMd = (await ask("Summarize data/sql files:\n" + data.map(f => f.file).join("\n"))) 
+  || localCodeMarkdown("Data Model", data);
 fs.writeFileSync(path.join(CODE_DIR, "data-model.md"), dataMd);
 
 console.log(`✅ Product Docs written to ${OUT}`);
