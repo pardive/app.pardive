@@ -1,30 +1,36 @@
 name: Product Docs
+
 on:
   push:
-    branches: [staging]   # switch to main later
+    branches: [staging]   # ✅ switch to [main] later once tested
   workflow_dispatch:
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # ✅ allows commit/push
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true     # allow pushing back
-          # token: ${{ github.token }}   # optional; default is already github.token
+          persist-credentials: true
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - run: npm ci || true
+      - name: Install dependencies
+        run: npm ci || true
 
       - name: Generate Product Docs
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PRODUCT_DOCS_DELAY_MS: "24000"   # pace for 3 RPM
+          PRODUCT_DOCS_LIGHT: "1"          # cap files on staging
         run: npm run docs:product
 
       - name: Commit & Push docs
