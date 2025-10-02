@@ -4,7 +4,7 @@
 
 import fs from "fs";
 import path from "path";
-import globby from "globby";
+import { globby } from "globby";
 import OpenAI from "openai";
 
 const ROOT = process.cwd();
