@@ -1,22 +1,46 @@
 name: Product Docs (Batch)
 
 on:
-  workflow_dispatch:   # run manually for now
+  push:
+    branches: [staging]       # switch to main later
+  workflow_dispatch:
   schedule:
-    - cron: "0 22 * * *"   # daily run
+    - cron: "0 22 * * *"      # run nightly at 22:00 UTC
 
 jobs:
   docs-batch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write          # allow committing docs back
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
+
+      - name: Install deps
+        run: npm ci
 
       - name: Submit batch job
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PRODUCT_DOCS_MODEL: gpt-5
+          PRODUCT_DOCS_MODEL: gpt-5-chat-latest
         run: npm run docs:batch
+
+      # 👇 Optional: if you want to parse and commit docs automatically
+      # Uncomment once you confirm batch jobs are completing fast enough
+      # - name: Parse and commit docs
+      #   run: |
+      #     npm run docs:batch-parse
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      #     git add docs/product-docs
+      #     git commit -m "docs: auto-update product docs" || echo "No changes"
+      #     git push origin HEAD:${{ github.ref_name }}
