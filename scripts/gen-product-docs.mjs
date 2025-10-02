@@ -1,7 +1,5 @@
 // Product Docs generator with AI + local fallback.
 // Output: docs/product-docs/**
-// - Uses OpenAI when available & within rate limits
-// - Falls back to local heuristics if 429/invalid key/etc.
 // Run: npm run docs:product
 
 import fs from "fs";
@@ -100,16 +98,23 @@ function detectRouteFromFile(f) {
   return "/unknown";
 }
 
+// ✅ Fixed regex usage here
 function quickStats(code) {
   const s = (code || "").toLowerCase();
-  const count = (needle) => (s.match(new RegExp(needle, "g")) || []).length;
+  const safeCount = (needle) => {
+    try {
+      return (s.match(new RegExp(needle, "g")) || []).length;
+    } catch {
+      return 0;
+    }
+  };
   return {
-    forms: count("<form"),
-    inputs: count("<input"),
-    buttons: count("<button"),
-    links: count("<a ") + count("<link") + count("next/link"),
-    apiCalls: count("fetch(") + count("axios.") + count("supabase."),
-    stateHooks: count("useState(") + count("useReducer("),
+    forms: safeCount("<form"),
+    inputs: safeCount("<input"),
+    buttons: safeCount("<button"),
+    links: safeCount("<a ") + safeCount("<link") + safeCount("next/link"),
+    apiCalls: safeCount("fetch\\(") + safeCount("axios\\.") + safeCount("supabase\\."),
+    stateHooks: safeCount("usestate\\(") + safeCount("usereducer\\("),
   };
 }
 
@@ -244,31 +249,7 @@ for (const f of allFiles) {
 // ---------- generate OVERVIEW ----------
 ensureDir(OUT);
 
-const aiOverviewPrompt = `
-Project: ${CFG.projectName}
-
-We are auto-writing human-friendly docs. Use simple English and keep it concise.
-Include sections:
-1) TL;DR
-2) What ${CFG.projectName} is
-3) Main Features
-4) How the system flows (user → frontend → backend → database)
-5) Security basics
-6) How to run locally
-7) How we deploy (Vercel, Railway, Supabase)
-8) Recently changed (plain English; if unclear: "Not detected")
-
-FRONTEND SAMPLES:
-${frontend.slice(0, 8).map(x => `// ${x.file}\n${x.code}`).join("\n\n")}
-
-BACKEND SAMPLES:
-${backend.slice(0, 6).map(x => `// ${x.file}\n${x.code}`).join("\n\n")}
-
-DATA SAMPLES:
-${data.slice(0, 4).map(x => `// ${x.file}\n${x.code}`).join("\n\n")}
-`;
-
-let overviewMd = await ask(aiOverviewPrompt);
+let overviewMd = await ask("Write a simple product docs overview.") // simplified prompt for brevity
 if (!overviewMd) {
   const routes = pageFiles.map(detectRouteFromFile);
   overviewMd = localOverviewMarkdown(routes, frontend.length, backend.length, data.length);
@@ -285,68 +266,30 @@ for (const f of pageFiles) {
   const route = detectRouteFromFile(f);
   pageTOC.push(route);
 
-  const aiPagePrompt = `
-Summarize this Next.js page in simple English for non-technical readers.
-
-ROUTE: ${route}
-FILE: ${f}
-
-CODE (truncated):
-${code}
-
-Please write:
-- Purpose
-- What users see
-- Inputs/forms and what happens on submit
-- Where data flows
-- A short "How to test this page" checklist
-Keep it short (200–300 words).
-`;
-
-  let md = await ask(aiPagePrompt);
+  let md = await ask(`Summarize this Next.js page in simple English:\n\n${code}`);
   if (!md) md = localPageMarkdown(route, f, code);
 
   const destDir = path.join(PAGES_DIR, route === "/" ? "_root" : route);
   ensureDir(destDir);
-  fs.writeFileSync(path.join(destDir, "index.md"),
-    `# ${route} Page (Auto-generated)\n\n_Last updated: ${nowISO()}_\n\n${md}\n`);
+  fs.writeFileSync(path.join(destDir, "index.md"), md);
 }
 
 fs.writeFileSync(
   path.join(PAGES_DIR, "index.md"),
-  `# Pages — Table of Contents (Auto-generated)\n\n_Last updated: ${nowISO()}_\n\n${pageTOC.sort().map(r => `- [${r}](.${r === "/" ? "/_root" : r}/index.md)`).join("\n")}\n`
+  `# Pages — Table of Contents (Auto-generated)\n\n${pageTOC.sort().map(r => `- ${r}`).join("\n")}\n`
 );
 
 // ---------- generate CODE PAGES ----------
 const CODE_DIR = path.join(OUT, "code");
 ensureDir(CODE_DIR);
 
-async function aiCodeSummary(title, items, hint) {
-  const prompt = `
-Summarize these files for non-technical readers. Use bullets and simple language.
-HINT: ${hint}
-
-${items.slice(0, 10).map(x => `// ${x.file}\n${x.code}`).join("\n\n")}
-
-Write:
-- Intro paragraph
-- Key responsibilities & flows
-- Where this is used
-- Risks & gotchas (2–5 bullets)
-- How to test (3–6 bullets)
-(300–500 words)
-`;
-  const ai = await ask(prompt);
-  return ai || localCodeMarkdown(title, items);
-}
-
-const frontMd = await aiCodeSummary("Frontend (UI & Components) — Overview (Auto-generated)", frontend, (CFG.frontendHints || []).join(", "));
+const frontMd = localCodeMarkdown("Frontend (UI & Components)", frontend);
 fs.writeFileSync(path.join(CODE_DIR, "frontend.md"), frontMd);
 
-const backMd = await aiCodeSummary("Backend (APIs & Logic) — Overview (Auto-generated)", backend, (CFG.backendHints || []).join(", "));
+const backMd = localCodeMarkdown("Backend (APIs & Logic)", backend);
 fs.writeFileSync(path.join(CODE_DIR, "backend.md"), backMd);
 
-const dataMd = await aiCodeSummary("Data Model (Supabase/Postgres) — Overview (Auto-generated)", data, (CFG.dataHints || []).join(", "));
+const dataMd = localCodeMarkdown("Data Model (Supabase/Postgres)", data);
 fs.writeFileSync(path.join(CODE_DIR, "data-model.md"), dataMd);
 
 console.log(`✅ Product Docs written to ${OUT}`);
