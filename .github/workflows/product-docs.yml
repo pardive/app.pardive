@@ -10,6 +10,7 @@ on:
 jobs:
   docs-batch:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
 
@@ -32,9 +33,10 @@ jobs:
       - name: Run GPT-5 batch (submit → wait → parse)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PRODUCT_DOCS_MODEL: gpt-5-mini 
-          FORCE_FULL: "1"              # <-- keep ONLY for the first baseline
-          MAX_BATCH_WAIT_MS: "2700000" # 45 minutes timeout guard
+          PRODUCT_DOCS_MODEL: gpt-5-mini
+          PRODUCT_DOCS_FALLBACK_MODEL: gpt-4o-mini   # optional fallback
+          FORCE_FULL: "1"                            # <-- only for first baseline
+          MAX_BATCH_WAIT_MS: "2700000"               # 45 minutes
         run: node scripts/run-batch-end-to-end.mjs
 
       - name: Commit & Push docs
