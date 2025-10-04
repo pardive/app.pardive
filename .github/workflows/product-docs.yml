@@ -32,7 +32,7 @@ jobs:
       - name: Run GPT-5 batch (submit → wait → parse)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PRODUCT_DOCS_MODEL: gpt-5-chat-latest
+          PRODUCT_DOCS_MODEL: gpt-5-mini 
           FORCE_FULL: "1"              # <-- keep ONLY for the first baseline
           MAX_BATCH_WAIT_MS: "2700000" # 45 minutes timeout guard
         run: node scripts/run-batch-end-to-end.mjs
