@@ -11,7 +11,7 @@ jobs:
   docs-batch:
     runs-on: ubuntu-latest
     permissions:
-      contents: write          # allow committing docs back
+      contents: write
 
     steps:
       - name: Checkout repo
@@ -24,6 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install deps
         run: npm ci
@@ -32,6 +33,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PRODUCT_DOCS_MODEL: gpt-5-chat-latest
+          FORCE_FULL: "1"              # <-- keep ONLY for the first baseline
+          MAX_BATCH_WAIT_MS: "2700000" # 45 minutes timeout guard
         run: node scripts/run-batch-end-to-end.mjs
 
       - name: Commit & Push docs
