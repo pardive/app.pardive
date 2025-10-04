@@ -112,7 +112,6 @@ function buildJsonlFor(files, model){
       body: {
         model,
         input: promptFor(route, f, code),       // ✅ single text input
-        temperature: 0.2,
         max_output_tokens: 800                  // keep outputs compact
       }
     };

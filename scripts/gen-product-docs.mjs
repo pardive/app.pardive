@@ -55,7 +55,6 @@ async function ask(prompt, { maxRetries = 3 } = {}) {
     try {
       const res = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        temperature: 0.2,
         messages: [
           { role: "system", content: "You are a senior technical writer. Use very simple English, no jargon or code dumps. If unknown, write 'Not detected'." },
           { role: "user", content: prompt }
