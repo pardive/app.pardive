@@ -3,14 +3,14 @@
 //   • Full baseline:   FORCE_FULL=1
 //   • Smart window:    default; only changed files
 //
-// Env:
+// Env (recommended):
 //   OPENAI_API_KEY=...
-//   PRODUCT_DOCS_MODEL=gpt-5-chat-latest
-//   PRODUCT_DOCS_FALLBACK_MODEL=gpt-5-mini
+//   PRODUCT_DOCS_MODEL=gpt-5-mini           // primary
+//   PRODUCT_DOCS_FALLBACK_MODEL=gpt-4o-mini // fallback if batch validation fails
+//   FORCE_FULL=1                            // only for first run
 //   DOCS_CHANGED_WINDOW_HOURS=24
 //   PRODUCT_DOCS_MAX_ITEMS=200
-//   FORCE_FULL=1                  // only for first run
-//   MAX_BATCH_WAIT_MS=2700000     // 45 minutes
+//   MAX_BATCH_WAIT_MS=2700000               // 45 minutes
 
 import fs from "fs";
 import path from "path";
@@ -23,8 +23,8 @@ const OUT_DIR = path.join(ROOT, "docs/product-docs");
 const META_DIR = path.join(ROOT, "docs");
 const LAST_RUN_PATH = path.join(META_DIR, ".last_run.json");
 
-const MODEL_PRIMARY = process.env.PRODUCT_DOCS_MODEL || "gpt-5-chat-latest";
-const MODEL_FALLBACK = process.env.PRODUCT_DOCS_FALLBACK_MODEL || "gpt-5-mini";
+const MODEL_PRIMARY = process.env.PRODUCT_DOCS_MODEL || "gpt-5-mini";
+const MODEL_FALLBACK = process.env.PRODUCT_DOCS_FALLBACK_MODEL || "gpt-4o-mini";
 
 const MAX_ITEMS = Number(process.env.PRODUCT_DOCS_MAX_ITEMS || 200);
 const WINDOW_HOURS = Number(process.env.DOCS_CHANGED_WINDOW_HOURS || 24);
@@ -54,7 +54,28 @@ function gitChangedInHours(h){
   }catch{return []}
 }
 
-// ---------- select targets ----------
+function promptFor(route, file, code){
+  return [
+    "You are a senior technical writer.",
+    "Write simple, non-technical product docs for this Next.js page.",
+    "Use clear paragraphs and short bullet points.",
+    "",
+    `ROUTE: ${route}`,
+    `FILE: ${file}`,
+    "",
+    "Include:",
+    "- Purpose of the page",
+    "- What the user sees (main UI elements)",
+    "- Inputs & submit behavior",
+    "- Data flow (client ↔ server, APIs, storage)",
+    "- 'How to test' checklist",
+    "",
+    "CODE:",
+    code
+  ].join("\n");
+}
+
+// ---------- target selection ----------
 async function selectTargets(){
   const all = await globby(
     ["src/app/**/page.{tsx,ts,jsx,js}", "src/pages/**/*.{tsx,ts,jsx,js}"],
@@ -79,40 +100,18 @@ async function selectTargets(){
   return targets.slice(0, MAX_ITEMS);
 }
 
-// Build a single text prompt for Responses API
-function promptFor(route, file, code){
-  return [
-    "You are a senior technical writer.",
-    "Write simple, non-technical product docs for this Next.js page.",
-    "Format as clear paragraphs and short bullet points.",
-    "",
-    `ROUTE: ${route}`,
-    `FILE: ${file}`,
-    "",
-    "Include:",
-    "- Purpose of the page (what a user can do)",
-    "- What the user sees (main UI elements)",
-    "- Inputs & submit behavior",
-    "- Data flow (client ↔ server, APIs, storage)",
-    "- Short 'How to test' checklist",
-    "",
-    "CODE:",
-    code
-  ].join("\n");
-}
-
+// ---------- batch plumbing (Responses API) ----------
 function buildJsonlFor(files, model){
   const reqs = files.map((f) => {
-    const code = fs.readFileSync(f, "utf8").slice(0, 3000); // trim per item
+    const code = fs.readFileSync(f, "utf8").slice(0, 3000); // keep inputs small
     const route = routeFrom(f);
     return {
       custom_id: route || "/",
       method: "POST",
-      url: "/v1/responses",                     // ✅ Responses API for Batch
+      url: "/v1/responses",                 // use Responses API for Batch
       body: {
         model,
-        input: promptFor(route, f, code),       // ✅ single text input
-        max_output_tokens: 800                  // keep outputs compact
+        input: promptFor(route, f, code)    // MINIMAL body: no temperature/max_* to avoid rejects
       }
     };
   });
@@ -127,7 +126,7 @@ async function submitBatch(jsonlPath){
   console.log("📤 Uploaded input file:", uploaded.id);
   const batch = await client.batches.create({
     input_file_id: uploaded.id,
-    endpoint: "/v1/responses",                 // ✅ match the url used in lines
+    endpoint: "/v1/responses",             // must match body.url
     completion_window: "24h"
   });
   console.log("🚀 Submitted batch:", batch.id);
@@ -161,8 +160,9 @@ async function printBatchError(batchId){
       return t;
     }
     if (info.errors?.length){
-      console.error("🧯 Batch error (inline):\n", JSON.stringify(info.errors, null, 2).slice(0,5000));
-      return JSON.stringify(info.errors);
+      const t = JSON.stringify(info.errors, null, 2);
+      console.error("🧯 Batch error (inline):\n", t.slice(0,5000));
+      return t;
     }
   }catch(e){
     console.error("Failed to fetch batch error details:", e?.message || e);
@@ -177,17 +177,18 @@ async function downloadResults(batchId){
   return streamToString(out.body);
 }
 
+// ---------- write output ----------
 function writeDocsFromJsonl(jsonl){
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const lines = jsonl.split("\n").map(l => l.trim()).filter(Boolean);
   for (const line of lines) {
     const obj = JSON.parse(line);
-    // Responses API puts text at response.body.output[0].content[0].text
+    const route = obj.custom_id || "/unknown";
+    // Responses API structure:
     const content =
       obj.response?.body?.output?.[0]?.content?.[0]?.text ||
       obj.response?.body?.choices?.[0]?.message?.content || // fallback if provider maps to chat
       "⚠️ No content generated";
-    const route = obj.custom_id || "/unknown";
     const dir = path.join(OUT_DIR, route === "/" ? "_root" : route);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
@@ -209,14 +210,14 @@ function recordLastRun(count){
   const targets = await selectTargets();
   console.log(`🗂️  Pages selected: ${targets.length} ${FORCE_FULL ? "(full baseline)" : "(smart window)"}`);
 
-  // 1st attempt with primary model via /v1/responses
+  // 1) First attempt with primary model
   let jsonlPath = buildJsonlFor(targets, MODEL_PRIMARY);
   let batchId = await submitBatch(jsonlPath);
   let status = await waitForBatch(batchId);
 
+  // 2) If batch fails, print error and retry once with fallback model
   if (status !== "completed") {
-    const details = await printBatchError(batchId);
-    // Always retry once with fallback if validation failed
+    await printBatchError(batchId);
     console.warn(`⚠️ Retrying once with fallback model '${MODEL_FALLBACK}'...`);
     jsonlPath = buildJsonlFor(targets, MODEL_FALLBACK);
     batchId = await submitBatch(jsonlPath);
@@ -227,7 +228,7 @@ function recordLastRun(count){
     }
   }
 
-  // Download → write docs → record last run
+  // 3) Download → write docs → record last run
   const jsonl = await downloadResults(batchId);
   fs.writeFileSync("batch-output.jsonl", jsonl);
   console.log("📥 Saved batch-output.jsonl");

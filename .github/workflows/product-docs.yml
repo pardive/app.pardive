@@ -1,18 +1,17 @@
-name: Product Docs (Batch → Sync Fallback)
+name: Product Docs (Batch)
 
 on:
   push:
-    branches: [staging]           # switch to main later
+    branches: [staging]       # switch to main later
   workflow_dispatch:
   schedule:
-    - cron: "0 22 * * *"          # nightly at 22:00 UTC
+    - cron: "0 22 * * *"      # nightly at 22:00 UTC
 
 jobs:
   docs-batch:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     permissions:
-      contents: write             # needed to push docs
+      contents: write
 
     steps:
       - name: Checkout repo
@@ -30,31 +29,20 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      # Tries Batch first (/v1/responses). If it fails, falls back to Sync (per-file Responses API).
       - name: Run docs (Batch → fallback to Sync)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Models
-          PRODUCT_DOCS_MODEL: gpt-5-mini
-          PRODUCT_DOCS_FALLBACK_MODEL: gpt-4o-mini
-          # Run mode
-          FORCE_FULL: "1"                 # <-- keep ONLY for the first baseline; remove afterward
-          # Batch controls
-          MAX_BATCH_WAIT_MS: "2700000"    # 45 minutes
-          PRODUCT_DOCS_MAX_ITEMS: "200"
-          DOCS_CHANGED_WINDOW_HOURS: "24"
-          # Sync controls
-          SYNC_SLEEP_MS: "2000"
-          SYNC_MAX_RETRIES: "5"
+          PRODUCT_DOCS_MODEL: gpt-5-chat-latest     # ✅ main model (supports temperature)
+          FALLBACK_MODEL: gpt-4o-mini               # ✅ fallback for batch
+          FORCE_FULL: "1"                           # only for the first full run
+          MAX_BATCH_WAIT_MS: "2700000"              # 45 mins
         run: |
-          set -e
-          echo "▶️ Trying Batch generator first…"
-          node scripts/run-batch-end-to-end.mjs || (echo "⚠️ Batch failed — switching to sync generator..." && node scripts/gen-product-docs-sync.mjs)
+          node scripts/run-batch-end-to-end.mjs
 
       - name: Commit & Push docs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/product-docs docs/.last_run.json || true
-          git commit -m "docs: auto-update product docs" || echo "No changes"
+          git add docs/product-docs
+          git commit -m "docs: auto-update product docs (batch)" || echo "No changes"
           git push origin HEAD:${{ github.ref_name }}
