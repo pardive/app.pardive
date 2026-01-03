@@ -51,7 +51,7 @@ export default function TopNavigationBar({
         <Link href="/" className="flex items-center h-full w-[140px]">
           {/* Light */}
           <Image
-            src="/logo/logo-green.svg"
+            src="/logo/pardive.png"
             alt="Saltify"
             width={120}
             height={26}
