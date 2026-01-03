@@ -1,7 +1,5 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import MarketingNavbar from '@/components/marketing/navigation/MarketingNavbar';
-
-export default function Navbar() {
-  return <MarketingNavbar />;
+export default function Page() {
+  redirect('/home');
 }

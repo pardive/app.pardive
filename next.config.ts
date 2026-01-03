@@ -4,17 +4,10 @@ import createMDX from '@next/mdx';
 
 const withMDX = createMDX({
   extension: /\.mdx?$/,
-  options: {
-    // remarkPlugins: [],
-    // rehypePlugins: [],
-  },
 });
 
-const baseConfig: NextConfig = {
-  eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
-
-  // MDX pages
+const nextConfig: NextConfig = {
+  // MDX support
   pageExtensions: ['ts', 'tsx', 'mdx'],
 
   webpack(config) {
@@ -27,4 +20,4 @@ const baseConfig: NextConfig = {
   },
 };
 
-export default withMDX(baseConfig);
+export default withMDX(nextConfig);

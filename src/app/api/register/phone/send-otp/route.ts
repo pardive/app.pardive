@@ -1,7 +1,7 @@
 // src/app/api/register/phone/send-otp/route.ts
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { supaAdmin } from '@/src/lib/supabaseAdmin';
+import { supaAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

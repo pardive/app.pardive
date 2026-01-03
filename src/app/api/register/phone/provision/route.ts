@@ -1,6 +1,6 @@
 // src/app/api/register/phone/provision/route.ts
 import { NextResponse } from 'next/server';
-import { supaAdmin } from '@/src/lib/supabaseAdmin';
+import { supaAdmin } from '@/lib/supabaseAdmin';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 

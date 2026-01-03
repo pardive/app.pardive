@@ -1,17 +1,4 @@
-import './globals.css';
-import { Ubuntu } from 'next/font/google';
-import { ThemeProvider } from 'next-themes';
-import LayoutClient from './LayoutClient';
-
-const ubuntu = Ubuntu({ subsets: ['latin'], weight: ['400', '700'] });
-
-export const metadata = {
-  title: 'Register - Saltify',
-  description: 'Register for Saltify',
-  icons: {
-    icon: '/favicon.ico',
-  },
-};
+import '@/app/globals.css';
 
 export default function RootLayout({
   children,
@@ -20,10 +7,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={ubuntu.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <LayoutClient>{children}</LayoutClient>
-        </ThemeProvider>
+      <body>
+        {children}
       </body>
     </html>
   );
