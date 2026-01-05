@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 // ====== Config ======
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'saltifysaas.com';
+const APP_DOMAIN = "pardive.com";
 // Local API by default (override with NEXT_PUBLIC_CHECK_SUBDOMAIN_URL)
 const CHECK_URL = process.env.NEXT_PUBLIC_CHECK_SUBDOMAIN_URL || '/api/check-subdomain';
 const ALLOW_OPTIMISTIC_CONTINUE = true; // allow continue when checker errors out
