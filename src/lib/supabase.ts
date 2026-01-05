@@ -1,25 +1,12 @@
 // src/lib/supabase.ts
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-let client: SupabaseClient | null = null;
+export function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export function getSupabaseClient(): SupabaseClient | null {
-  if (client) return client;
+  if (!url) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
+  if (!anonKey) throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
-  // Only run in browser
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // ❌ DO NOT throw
-  if (!url || !key) {
-    console.warn('Supabase client not initialized: missing public env vars');
-    return null;
-  }
-
-  client = createClient(url, key);
-  return client;
+  return createClient(url, anonKey);
 }

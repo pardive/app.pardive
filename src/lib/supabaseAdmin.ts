@@ -1,18 +1,12 @@
 // src/lib/supabaseAdmin.ts
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-export function supaAdmin(): SupabaseClient {
-  const url = process.env.SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE;
+export function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-  if (!url || !serviceRole) {
-    // Helpful server log while keeping a simple error to client
-    console.error('Supabase admin missing env', {
-      hasUrl: !!url,
-      hasServiceRole: !!serviceRole,
-    });
-    throw new Error('Supabase admin not configured (missing SUPABASE_URL / SUPABASE_SERVICE_ROLE)');
-  }
+  if (!url) throw new Error("Missing SUPABASE_URL");
+  if (!serviceRoleKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
-  return createClient(url, serviceRole, { auth: { persistSession: false } });
+  return createClient(url, serviceRoleKey);
 }
