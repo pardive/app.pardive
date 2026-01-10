@@ -89,7 +89,7 @@ export default function LoginForm() {
             value={form.password}
             onChange={handleChange}
             required
-            className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-white placeholder-gray-400 focus:outline-none"
+            className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-black placeholder-gray-400 focus:outline-none"
           />
           <div className="text-right -mt-1">
             <button
