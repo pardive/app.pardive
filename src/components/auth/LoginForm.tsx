@@ -1,34 +1,71 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export default function LoginForm() {
   const [useOtp, setUseOtp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    identifier: "",
-    password: "",
-    otp: "",
+    identifier: '',
+    password: '',
+    otp: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    console.log("Login attempt:", {
-      identifier: form.identifier,
-      auth: useOtp ? form.otp : form.password,
-    });
-  };
+    setError(null);
+
+    // 🚫 OTP not implemented yet
+    if (useOtp) {
+      setError('OTP login coming soon');
+      return;
+    }
+
+    if (!form.identifier || !form.password) {
+      setError('Email and password are required');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.identifier, // email for now
+          password: form.password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Invalid credentials');
+        setLoading(false);
+        return;
+      }
+
+      // ✅ SUCCESS
+      window.location.href = '/home';
+    } catch (err) {
+      setError('Something went wrong');
+      setLoading(false);
+    }
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-[#00332D]">
       <p className="text-lg text-center text-gray-500">
-        Log in to your account <span className="text-xs"></span>
+        Log in to your account
       </p>
 
       {/* Email or Mobile */}
@@ -42,7 +79,7 @@ export default function LoginForm() {
         className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-white placeholder-gray-400 focus:outline-none"
       />
 
-      {/* Password or OTP + compact link */}
+      {/* Password or OTP */}
       {!useOtp ? (
         <div className="space-y-2">
           <input
@@ -58,7 +95,7 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={() => setUseOtp(true)}
-              className="text-[#3B82F6] text-xs text-right underline leading-none"
+              className="text-[#3B82F6] text-xs underline leading-none"
             >
               Login using OTP instead
             </button>
@@ -79,7 +116,7 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={() => setUseOtp(false)}
-              className="text-[#3B82F6] text-xs text-right underline leading-none"
+              className="text-[#3B82F6] text-xs underline leading-none"
             >
               Use password instead
             </button>
@@ -87,19 +124,30 @@ export default function LoginForm() {
         </div>
       )}
 
-      {/* Submit (reduced gap below the link) */}
+      {/* Error */}
+      {error && (
+        <div className="text-sm text-red-600 text-center">
+          {error}
+        </div>
+      )}
+
+      {/* Submit */}
       <div className="-mt-2">
         <button
           type="submit"
+          disabled={loading}
           className="
             inline-flex w-full h-11 items-center justify-center
             rounded-md border
             bg-ui-buttonPrimaryBg text-ui-buttonPrimaryText border-ui-buttonPrimaryBorder
             hover:bg-ui-buttonPrimaryHover
             focus:outline-none focus:ring-2 focus:ring-ui-buttonPrimaryBorder
+            disabled:opacity-60
           "
         >
-          <span className="font-semibold leading-none">Login</span>
+          <span className="font-semibold leading-none">
+            {loading ? 'Logging in…' : 'Login'}
+          </span>
         </button>
       </div>
 
@@ -110,20 +158,26 @@ export default function LoginForm() {
         <div className="flex-1 h-px bg-gray-300" />
       </div>
 
-      {/* Third-party login */}
+      {/* Third-party login (stub) */}
       <div className="space-y-2">
         {[
-          { name: "Google", icon: "/icons/google.png" },
-          { name: "Microsoft", icon: "/icons/microsoft.png" },
-          { name: "LinkedIn", icon: "/icons/linkedin.png" },
+          { name: 'Google', icon: '/icons/google.png' },
+          { name: 'Microsoft', icon: '/icons/microsoft.png' },
+          { name: 'LinkedIn', icon: '/icons/linkedin.png' },
         ].map((provider) => (
           <button
             key={provider.name}
             type="button"
-            onClick={() => console.log(`Login with ${provider.name}`)}
+            onClick={() => alert(`${provider.name} login coming soon`)}
             className="w-full flex items-center justify-center border border-gray-300 rounded-md py-2 hover:bg-gray-100 transition"
           >
-            <Image src={provider.icon} alt={provider.name} width={20} height={20} className="mr-2" />
+            <Image
+              src={provider.icon}
+              alt={provider.name}
+              width={20}
+              height={20}
+              className="mr-2"
+            />
             Login with {provider.name}
           </button>
         ))}
@@ -131,7 +185,7 @@ export default function LoginForm() {
 
       {/* Footer */}
       <p className="text-center text-sm mt-6 text-[#00380e]">
-        Don’t have an account?{" "}
+        Don’t have an account?{' '}
         <Link href="/auth/register" className="underline">
           Register
         </Link>
