@@ -58,14 +58,13 @@ export default function LoginForm() {
          ✅ LOGIN SUCCESS REDIRECT LOGIC (NEW)
       ====================================================== */
 
-      const lastApp = localStorage.getItem('last_app');
+            const lastApp = localStorage.getItem('last_app');
 
-      if (!lastApp || lastApp === 'workspace') {
-        window.location.href = '/home';
-      } else {
-        window.location.href = `/apps/${lastApp}`;
-      }
-
+            if (!lastApp || lastApp === 'workspace') {
+              window.location.href = '/workspace';
+            } else {
+              window.location.href = `/apps/${lastApp}`;
+            }
       /* ====================================================== */
 
     } catch (err) {
