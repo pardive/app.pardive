@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import ProfileView from './ProfileView';
 
 export default function ProfileScreen() {
-  const { profile, refresh } = useProfile();
+  const { profile } = useProfile();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<any>({});
 
@@ -19,7 +19,6 @@ export default function ProfileScreen() {
     });
 
     setEditing(false);
-    refresh();
   };
 
   return (

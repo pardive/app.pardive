@@ -27,21 +27,21 @@ export default function ProfileView({ profile, editing, onChange }: Props) {
             label="Mobile"
             value={profile.mobile}
             editing={editing}
-            onChange={(v) => onChange('mobile', v)}
+            onChange={(v: string) => onChange('mobile', v)}
           />
 
           <Field
             label="Name"
             value={profile.first_name}
             editing={editing}
-            onChange={(v) => onChange('first_name', v)}
+            onChange={(v: string) => onChange('first_name', v)}
           />
 
           <Field
             label="Job title"
             value={profile.job_title}
             editing={editing}
-            onChange={(v) => onChange('job_title', v)}
+            onChange={(v: string) => onChange('job_title', v)}
           />
         </div>
       </div>
