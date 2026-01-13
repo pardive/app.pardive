@@ -1,21 +1,48 @@
 'use client';
 
+import { useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
+import ProfileView from './ProfileView';
 
 export default function ProfileScreen() {
-  const { profile, loading } = useProfile();
+  const { profile, refresh } = useProfile();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<any>({});
 
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (!profile) return <div className="p-6">Not logged in</div>;
+  if (!profile) return null;
+
+  const save = async () => {
+    await fetch('/api/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+
+    setEditing(false);
+    refresh();
+  };
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold">My profile</h1>
+    <div className="px-8 py-6 max-w-[1400px] mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">My profile</h1>
 
-      <div>Email: {profile.email}</div>
-      <div>Name: {profile.name || '—'}</div>
-      <div>Job title: {profile.job_title || '—'}</div>
-      <div>Mobile: {profile.mobile || '—'}</div>
+        {editing ? (
+          <button onClick={save} className="btn-primary">
+            Save
+          </button>
+        ) : (
+          <button onClick={() => setEditing(true)} className="btn-secondary">
+            Edit
+          </button>
+        )}
+      </div>
+
+      <ProfileView
+        profile={{ ...profile, ...draft }}
+        editing={editing}
+        onChange={(k, v) => setDraft({ ...draft, [k]: v })}
+      />
     </div>
   );
 }
