@@ -4,16 +4,26 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { User, LogOut, Settings, IdCard, ExternalLink } from 'lucide-react';
+
 import ProfileQuickModal from '@/components/profile/ProfileQuickModal';
 import { useProfile } from '@/hooks/useProfile';
 
 type Props = { className?: string };
+type Profile = {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  job_title?: string | null;
+  avatar_url?: string | null;
+};
 
 export default function ProfileIcon({ className }: Props) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
 
   /* ---------------- data ---------------- */
-  const { profile } = useProfile();
+  const { profile } = useProfile() as { profile: Profile | null };
 
   /* ---------------- popover ---------------- */
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,7 +42,7 @@ export default function ProfileIcon({ className }: Props) {
 
   const HEADER =
     'rounded-t-lg -m-1 mb-1 px-3 py-2.5 text-[11px] uppercase tracking-wider font-semibold ' +
-    'text-neutral-500 bg-neutral-50/90 dark:bg-neutral-800/70 border-b';
+    'text-neutral-500 bg-neutral-50/90 dark:bg-neutral-800/70 border-b border-neutral-200/80 dark:border-neutral-800';
 
   /* ---------------- positioning ---------------- */
   const positionMenu = () => {
@@ -95,11 +105,14 @@ export default function ProfileIcon({ className }: Props) {
     const onDoc = (e: MouseEvent) => {
       if (!menuOpen) return;
       const t = e.target as Node;
+
       if (
         anchorRef.current?.contains(t) ||
         document.getElementById('profile-popover')?.contains(t)
-      )
+      ) {
         return;
+      }
+
       closeMenu();
     };
 
@@ -160,7 +173,10 @@ export default function ProfileIcon({ className }: Props) {
         <div className={HEADER}>Account</div>
 
         <div className="flex items-stretch gap-1">
-          <button onClick={openProfileModal} className={`flex-1 inline-flex items-center gap-2 ${MENU_ITEM}`}>
+          <button
+            onClick={openProfileModal}
+            className={`flex-1 inline-flex items-center gap-2 ${MENU_ITEM}`}
+          >
             <IdCard className="w-4 h-4" />
             My profile
           </button>
