@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function LoginForm() {
   const [useOtp, setUseOtp] = useState(false);
@@ -37,37 +38,32 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.identifier,
-          password: form.password,
-        }),
+      const supabase = supabaseBrowser();
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: form.identifier,
+        password: form.password,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Invalid credentials');
+      if (error) {
+        setError(error.message);
         setLoading(false);
         return;
       }
 
       /* ======================================================
-         ✅ LOGIN SUCCESS REDIRECT LOGIC (NEW)
+         ✅ LOGIN SUCCESS REDIRECT (UNCHANGED BEHAVIOR)
       ====================================================== */
+      const lastApp = localStorage.getItem('last_app');
 
-            const lastApp = localStorage.getItem('last_app');
-
-            if (!lastApp || lastApp === 'workspace') {
-              window.location.href = '/workspace';
-            } else {
-              window.location.href = `/apps/${lastApp}`;
-            }
+      if (!lastApp || lastApp === 'workspace') {
+        window.location.href = '/workspace';
+      } else {
+        window.location.href = `/apps/${lastApp}`;
+      }
       /* ====================================================== */
 
-    } catch (err) {
+    } catch {
       setError('Something went wrong');
       setLoading(false);
     }
@@ -87,7 +83,7 @@ export default function LoginForm() {
         value={form.identifier}
         onChange={handleChange}
         required
-        className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-white placeholder-gray-400 focus:outline-none"
+        className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-black placeholder-gray-400 focus:outline-none"
       />
 
       {/* Password or OTP */}
@@ -121,7 +117,7 @@ export default function LoginForm() {
             value={form.otp}
             onChange={handleChange}
             required
-            className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-white placeholder-gray-400 focus:outline-none"
+            className="w-full p-3 rounded-md bg-transparent border border-[#14532d] text-black placeholder-gray-400 focus:outline-none"
           />
           <div className="text-right -mt-1">
             <button
@@ -169,7 +165,7 @@ export default function LoginForm() {
         <div className="flex-1 h-px bg-gray-300" />
       </div>
 
-      {/* Third-party login */}
+      {/* Third-party login (UI only) */}
       <div className="space-y-2">
         {[
           { name: 'Google', icon: '/icons/google.png' },

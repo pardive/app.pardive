@@ -5,21 +5,15 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { User, LogOut, Settings, IdCard, ExternalLink } from 'lucide-react';
 import ProfileQuickModal from '@/components/profile/ProfileQuickModal';
+import { useProfile } from '@/hooks/useProfile';
 
 type Props = { className?: string };
 
-type Profile = {
-  id: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  email?: string | null;
-  mobile?: string | null;
-  job_title?: string | null;
-  avatar_url?: string | null;
-};
-
 export default function ProfileIcon({ className }: Props) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
+
+  /* ---------------- data ---------------- */
+  const { profile } = useProfile();
 
   /* ---------------- popover ---------------- */
   const [menuOpen, setMenuOpen] = useState(false);
@@ -29,39 +23,31 @@ export default function ProfileIcon({ className }: Props) {
   });
   const hoverCloseId = useRef<number | null>(null);
 
-  /* ---------------- modal + profile ---------------- */
+  /* ---------------- modal ---------------- */
   const [modalOpen, setModalOpen] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
 
-  /* ---------------- shared styles ---------------- */
-  const MENU_ITEM_TEXT = 'text-sm leading-5';
-  const MENU_ITEM_PAD = 'px-3 py-2';
-  const MENU_ITEM_BASE =
-    'rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 ' +
-    MENU_ITEM_TEXT +
-    ' ' +
-    MENU_ITEM_PAD;
+  /* ---------------- styles ---------------- */
+  const MENU_ITEM =
+    'rounded-lg px-3 py-2 text-sm leading-5 hover:bg-neutral-200 dark:hover:bg-neutral-700';
 
-  const HEADER_CLS =
-    'rounded-t-lg -m-1 mb-1 px-3 py-2.5 text-[11px] uppercase tracking-wider ' +
-    'font-semibold text-neutral-500 bg-neutral-50/90 dark:bg-neutral-800/70 ' +
-    'border-b border-neutral-200/80 dark:border-neutral-800';
+  const HEADER =
+    'rounded-t-lg -m-1 mb-1 px-3 py-2.5 text-[11px] uppercase tracking-wider font-semibold ' +
+    'text-neutral-500 bg-neutral-50/90 dark:bg-neutral-800/70 border-b';
 
   /* ---------------- positioning ---------------- */
   const positionMenu = () => {
     const r = anchorRef.current?.getBoundingClientRect();
     if (!r) return;
 
-    const width = 224; // w-56
+    const width = 224;
     const gap = 8;
 
-    const top = Math.round(r.bottom + gap);
-    const left = Math.round(
-      Math.min(window.innerWidth - width - gap, Math.max(gap, r.right - width))
-    );
-
-    setMenuPos({ top, left });
+    setMenuPos({
+      top: Math.round(r.bottom + gap),
+      left: Math.round(
+        Math.min(window.innerWidth - width - gap, Math.max(gap, r.right - width))
+      ),
+    });
   };
 
   const openMenu = () => {
@@ -71,21 +57,22 @@ export default function ProfileIcon({ className }: Props) {
 
   const closeMenu = () => setMenuOpen(false);
 
+  /* ---------------- hover logic ---------------- */
   const onAnchorEnter = () => {
-    if (hoverCloseId.current) window.clearTimeout(hoverCloseId.current);
+    if (hoverCloseId.current) clearTimeout(hoverCloseId.current);
     openMenu();
   };
 
   const onAnchorLeave = () => {
-    hoverCloseId.current = window.setTimeout(() => setMenuOpen(false), 120);
+    hoverCloseId.current = window.setTimeout(closeMenu, 120);
   };
 
   const onMenuEnter = () => {
-    if (hoverCloseId.current) window.clearTimeout(hoverCloseId.current);
+    if (hoverCloseId.current) clearTimeout(hoverCloseId.current);
   };
 
   const onMenuLeave = () => {
-    hoverCloseId.current = window.setTimeout(() => setMenuOpen(false), 120);
+    hoverCloseId.current = window.setTimeout(closeMenu, 120);
   };
 
   /* ---------------- effects ---------------- */
@@ -107,12 +94,12 @@ export default function ProfileIcon({ className }: Props) {
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!menuOpen) return;
-
       const t = e.target as Node;
-      const a = anchorRef.current;
-      const m = document.getElementById('profile-popover');
-
-      if (a?.contains(t) || m?.contains(t)) return;
+      if (
+        anchorRef.current?.contains(t) ||
+        document.getElementById('profile-popover')?.contains(t)
+      )
+        return;
       closeMenu();
     };
 
@@ -120,52 +107,32 @@ export default function ProfileIcon({ className }: Props) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [menuOpen]);
 
-  /* ---------------- modal open + fetch ---------------- */
+  /* ---------------- actions ---------------- */
   const openProfileModal = () => {
     setModalOpen(true);
     closeMenu();
-
-    if (profile || loadingProfile) return;
-
-    setLoadingProfile(true);
-    fetch('/api/profile', { headers: { Accept: 'application/json' } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((j: { profile: Profile }) => setProfile(j.profile))
-      .catch(() =>
-        setProfile({
-          id: 'me',
-          first_name: 'Alex',
-          last_name: 'Doe',
-          email: 'alex@example.com',
-          mobile: '+1 555 123 4567',
-          job_title: 'Growth Lead',
-          avatar_url: '',
-        })
-      )
-      .finally(() => setLoadingProfile(false));
   };
+
+  if (!profile) return null;
 
   return (
     <>
       {/* Anchor */}
       <div
         ref={anchorRef}
-        className="relative grid place-items-center group"
+        className="relative grid place-items-center"
         onMouseEnter={onAnchorEnter}
         onMouseLeave={onAnchorLeave}
       >
         <button
           type="button"
           aria-label="Account"
-          title="Account"
           onClick={() => (menuOpen ? closeMenu() : openMenu())}
           className="grid place-items-center"
         >
           <User
             className={clsx(
-              'w-6 h-6 text-[#00332D] dark:text-white',
-              'origin-center group-hover:animate-profile-swivel',
-              'cursor-pointer',
+              'w-6 h-6 text-[#00332D] dark:text-white cursor-pointer',
               className
             )}
             strokeWidth={2.2}
@@ -180,99 +147,62 @@ export default function ProfileIcon({ className }: Props) {
         onMouseLeave={onMenuLeave}
         style={{
           position: 'fixed',
-          top: `${menuPos.top}px`,
-          left: `${menuPos.left}px`,
+          top: menuPos.top,
+          left: menuPos.left,
           zIndex: 1_000_000,
         }}
         className={clsx(
-          'w-56 rounded-lg border bg-white/95 backdrop-blur shadow-xl',
+          'w-56 rounded-lg border bg-white/95 backdrop-blur shadow-xl p-1',
           'dark:bg-neutral-900/95 dark:border-neutral-800',
-          'transition-opacity duration-150 p-1',
           menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         )}
       >
-        {/* HEADER */}
-        <div className={HEADER_CLS}>ACCOUNT</div>
+        <div className={HEADER}>Account</div>
 
-        {/* My profile */}
         <div className="flex items-stretch gap-1">
-          <button
-            type="button"
-            onClick={openProfileModal}
-            className={clsx('flex-1 inline-flex items-center gap-2', MENU_ITEM_BASE)}
-          >
+          <button onClick={openProfileModal} className={`flex-1 inline-flex items-center gap-2 ${MENU_ITEM}`}>
             <IdCard className="w-4 h-4" />
-            <span className="text-left">My profile</span>
+            My profile
           </button>
 
           <Link
             href="/profile"
-            title="Open full page"
             target="_blank"
             rel="noopener noreferrer"
-            className={clsx('grid place-items-center rounded-lg', MENU_ITEM_PAD)}
+            className="grid place-items-center rounded-lg px-2 hover:bg-neutral-200 dark:hover:bg-neutral-700"
           >
             <ExternalLink className="w-4 h-4" />
           </Link>
         </div>
 
-        <MenuItem href="/preferences" icon={<Settings className="w-4 h-4" />}>
+        <Link href="/preferences" className={`flex items-center gap-2 ${MENU_ITEM}`}>
+          <Settings className="w-4 h-4" />
           Preferences
-        </MenuItem>
+        </Link>
 
-        <MenuDivider />
+        <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-1" />
 
         <button
           onClick={() => (window.location.href = '/')}
-          className={clsx('w-full text-left flex items-center gap-2', MENU_ITEM_BASE)}
+          className={`w-full text-left flex items-center gap-2 ${MENU_ITEM}`}
         >
           <LogOut className="w-4 h-4" />
           Log out
         </button>
       </div>
 
-      {/* Quick Profile modal */}
+      {/* Profile modal */}
       <ProfileQuickModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         name={
-          profile
-            ? `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || '—'
-            : undefined
+          `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || '—'
         }
-        jobTitle={profile?.job_title ?? undefined}
-        email={profile?.email ?? undefined}
-        mobile={profile?.mobile ?? undefined}
-        avatarUrl={profile?.avatar_url ?? undefined}
+        jobTitle={profile.job_title ?? undefined}
+        email={profile.email ?? undefined}
+        mobile={profile.mobile ?? undefined}
+        avatarUrl={profile.avatar_url ?? undefined}
       />
     </>
   );
-}
-
-/* ---------------- helpers ---------------- */
-
-function MenuItem({
-  href,
-  icon,
-  children,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="block rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 px-3 py-2 text-sm leading-5"
-    >
-      <span className="inline-flex items-center gap-2">
-        {icon}
-        {children}
-      </span>
-    </Link>
-  );
-}
-
-function MenuDivider() {
-  return <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-1" />;
 }

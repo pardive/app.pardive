@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-[92vw] max-w-[92vw] sm:w-[420px] sm:max-w-[420px] px-7 py-6 rounded-md bg-white text-[#00332D] shadow-2xl">
         {/* Logo + divider */}
         <div className="flex items-center justify-center">
-          <Image src="/logo/logo-green.svg" alt="Saltify Logo" width={160} height={40} priority />
+          <Image src="/logo/pardive.png" alt="Pardive Logo" width={160} height={40} priority />
         </div>
         <div className="w-full h-px bg-gray-200 my-4" />
 
