@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pencil, Camera } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import Avatar from '@/components/profile/Avatar';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Mode = 'view' | 'edit';
 
@@ -18,10 +19,12 @@ export default function ProfileScreen() {
 
   if (!profile) return null;
 
+  /* ---------- LOCAL UPDATE (UNCHANGED) ---------- */
   const update = (key: string, value: string) => {
     setDraft((p: any) => ({ ...p, [key]: value }));
   };
 
+  /* ---------- SNAPSHOT / RESTORE (UNCHANGED) ---------- */
   const snapshot = (id: string, fields: string[]) => {
     snapshots.current[id] = fields.reduce((a: any, f) => {
       a[f] = draft[f];
@@ -34,16 +37,90 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
+  /* ---------- DB SAVE (SAFE + MAPPED) ---------- */
+  const saveFields = async (fields: string[]) => {
+    const payload: any = {};
+
+    fields.forEach((key) => {
+      // map UI fields → DB columns (NO UI CHANGE)
+      if (key === 'role') payload.job_title = draft.role;
+      else if (key === 'mobile') payload.phone = draft.mobile;
+      else payload[key] = draft[key];
+    });
+
+    const supabase = supabaseBrowser();
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        ...payload,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', profile.user_id);
+
+    if (error) {
+      console.error('[PROFILE_SAVE_ERROR]', error);
+      throw error;
+    }
+  };
+
+  /* ---------- COVER UPLOAD (SAFE) ---------- */
+  const uploadCover = async (file: File) => {
+    const supabase = supabaseBrowser();
+    const path = `${profile.user_id}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-covers')
+      .upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+
+    if (uploadError) {
+      console.error('[COVER_UPLOAD_ERROR]', uploadError);
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from('profile-covers')
+      .getPublicUrl(path);
+
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .update({
+        cover_url: data.publicUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', profile.user_id);
+
+    if (dbError) {
+      console.error('[COVER_DB_ERROR]', dbError);
+      throw dbError;
+    }
+
+    setDraft((p: any) => ({ ...p, cover_url: data.publicUrl }));
+  };
+
   const name =
     `${draft.first_name ?? ''} ${draft.last_name ?? ''}`.trim() || '—';
 
   return (
     <div className="relative">
 
-      {/* COVER */}
+      {/* ================= COVER ================= */}
       <div className="relative -mt-6 -mx-8">
         <div className="h-60 bg-gradient-to-r from-neutral-900 to-neutral-700 relative">
-          <input type="file" hidden id="cover-upload" accept="image/*" />
+          <input
+            type="file"
+            hidden
+            id="cover-upload"
+            accept="image/*"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              await uploadCover(file);
+            }}
+          />
           <label
             htmlFor="cover-upload"
             className="absolute right-6 bottom-4 cursor-pointer text-white/80 hover:text-white"
@@ -53,7 +130,7 @@ export default function ProfileScreen() {
         </div>
       </div>
 
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <div className="px-8">
         <div className="flex items-end gap-6 -mt-16">
           <Avatar profile={profile} size={144} editable />
@@ -71,7 +148,7 @@ export default function ProfileScreen() {
         </div>
       </div>
 
-      {/* CONTENT */}
+      {/* ================= CONTENT ================= */}
       <div className="px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <EditableCard
@@ -86,6 +163,15 @@ export default function ProfileScreen() {
             ])
           }
           onCancel={() => restore('personal')}
+          onSave={async () => {
+            await saveFields([
+              'first_name',
+              'last_name',
+              'role',
+              'mobile',
+              'timezone',
+            ]);
+          }}
         >
           {(mode) => (
             <>
@@ -103,6 +189,9 @@ export default function ProfileScreen() {
           title="Address"
           onEdit={() => snapshot('address', ['address_line', 'country', 'zip'])}
           onCancel={() => restore('address')}
+          onSave={async () => {
+            await saveFields(['address_line', 'country', 'zip']);
+          }}
         >
           {(mode) => (
             <>
@@ -114,7 +203,7 @@ export default function ProfileScreen() {
         </EditableCard>
       </div>
 
-      {/* SECURITY */}
+      {/* ================= SECURITY ================= */}
       <div className="px-8 mt-6">
         <Card title="Security">
           <div className="flex items-center justify-between">
@@ -141,11 +230,13 @@ function EditableCard({
   children,
   onEdit,
   onCancel,
+  onSave,
 }: {
   title: string;
   children: (mode: Mode) => React.ReactNode;
   onEdit?: () => void;
   onCancel?: () => void;
+  onSave?: () => Promise<void>;
 }) {
   const [mode, setMode] = useState<Mode>('view');
 
@@ -181,7 +272,10 @@ function EditableCard({
               Cancel
             </button>
             <button
-              onClick={() => setMode('view')}
+              onClick={async () => {
+                await onSave?.();
+                setMode('view');
+              }}
               className="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white"
             >
               Save
