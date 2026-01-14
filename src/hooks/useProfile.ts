@@ -1,15 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-type Profile = {
-  id: string;
-  email: string;
-  name?: string;
-  job_title?: string;
-  mobile?: string;
-  avatar_url?: string;
-};
+import type { Profile } from '@/types/profile';
 
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -18,8 +10,12 @@ export function useProfile() {
   useEffect(() => {
     fetch('/api/profile')
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+      .then((data: Profile | null) => {
         setProfile(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setProfile(null);
         setLoading(false);
       });
   }, []);

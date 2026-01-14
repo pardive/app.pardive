@@ -1,6 +1,6 @@
 // types/profile.ts
-
 export type Profile = {
+  user_id: string;
   id: string;
   first_name: string | null;
   last_name: string | null;
