@@ -37,7 +37,7 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
-  /* ---------- DB SAVE (FIXED) ---------- */
+  /* ---------- DB SAVE (AUTH UID – FINAL FIX) ---------- */
   const saveFields = async (fields: string[]) => {
     const payload: any = {};
 
@@ -49,14 +49,19 @@ export default function ProfileScreen() {
 
     const supabase = supabaseBrowser();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('profiles')
       .update({
         ...payload,
         updated_at: new Date().toISOString(),
       })
-      // ✅ IMPORTANT FIX: use profile.id (auth uid)
-      .eq('user_id', profile.id);
+      .eq('user_id', user.id); // ✅ SINGLE SOURCE OF TRUTH
 
     if (error) {
       console.error('[PROFILE_SAVE_ERROR]', error);
@@ -64,10 +69,17 @@ export default function ProfileScreen() {
     }
   };
 
-  /* ---------- COVER UPLOAD (FIXED) ---------- */
+  /* ---------- COVER UPLOAD (AUTH UID – FINAL FIX) ---------- */
   const uploadCover = async (file: File) => {
     const supabase = supabaseBrowser();
-    const path = `${profile.id}.jpg`; // ✅ same fix
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) throw new Error('Not authenticated');
+
+    const path = `${user.id}.jpg`;
 
     const { error: uploadError } = await supabase.storage
       .from('profile-covers')
@@ -91,7 +103,7 @@ export default function ProfileScreen() {
         cover_url: data.publicUrl,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', profile.id); // ✅ same fix
+      .eq('user_id', user.id);
 
     if (dbError) {
       console.error('[COVER_DB_ERROR]', dbError);
