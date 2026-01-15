@@ -3,28 +3,52 @@
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function Avatar({ profile, editable }: any) {
+  const supabase = supabaseBrowser();
+
   const upload = async (file: File) => {
-    const supabase = supabaseBrowser();
+    // 1. Always trust auth session, not profile.id
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    const path = `avatars/${profile.id}.png`;
+    if (!user) return;
 
-    await supabase.storage
+    const path = `avatars/${user.id}.png`;
+
+    // 2. Upload (overwrite safely)
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true });
+      .upload(path, file, { upsert: true, contentType: file.type });
 
-    await fetch('/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify({
-        avatar_url: path,
-      }),
-    });
+    if (uploadError) {
+      console.error('[AVATAR_UPLOAD]', uploadError);
+      return;
+    }
 
-    location.reload();
+    // 3. Get public URL
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+
+    // 4. Update profile row directly (single source of truth)
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .update({
+        avatar_url: path, // store STORAGE PATH, not full URL
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id);
+
+    if (dbError) {
+      console.error('[AVATAR_DB_UPDATE]', dbError);
+      return;
+    }
+
+    // 5. Soft refresh (no full reload)
+    window.dispatchEvent(new Event('profile-updated'));
   };
 
+  // Resolve avatar URL
   const avatarUrl = profile.avatar_url
-    ? supabaseBrowser()
-        .storage
+    ? supabase.storage
         .from('avatars')
         .getPublicUrl(profile.avatar_url).data.publicUrl
     : `https://ui-avatars.com/api/?name=${profile.email}&background=E5E7EB&color=111827`;
@@ -38,7 +62,7 @@ export default function Avatar({ profile, editable }: any) {
         className="w-36 h-36 rounded-full border bg-white object-cover"
       />
 
-      {/* Camera icon (only if editable) */}
+      {/* Camera icon */}
       {editable && (
         <label
           className="
@@ -51,7 +75,6 @@ export default function Avatar({ profile, editable }: any) {
           "
           title="Change photo"
         >
-          {/* Camera SVG */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="w-4 h-4 text-neutral-700"

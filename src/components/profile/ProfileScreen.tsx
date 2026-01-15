@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, Camera } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import Avatar from '@/components/profile/Avatar';
+import ProfileCover from '@/components/profile/ProfileCover';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Mode = 'view' | 'edit';
@@ -37,7 +38,7 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
-  /* ---------- DB SAVE (AUTH UID – FINAL FIX) ---------- */
+  /* ---------- SAVE ---------- */
   const saveFields = async (fields: string[]) => {
     const payload: any = {};
 
@@ -48,69 +49,19 @@ export default function ProfileScreen() {
     });
 
     const supabase = supabaseBrowser();
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) throw new Error('Not authenticated');
+    if (!user) return;
 
-    const { error } = await supabase
+    await supabase
       .from('profiles')
       .update({
         ...payload,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', user.id); // ✅ SINGLE SOURCE OF TRUTH
-
-    if (error) {
-      console.error('[PROFILE_SAVE_ERROR]', error);
-      throw error;
-    }
-  };
-
-  /* ---------- COVER UPLOAD (AUTH UID – FINAL FIX) ---------- */
-  const uploadCover = async (file: File) => {
-    const supabase = supabaseBrowser();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) throw new Error('Not authenticated');
-
-    const path = `${user.id}.jpg`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('profile-covers')
-      .upload(path, file, {
-        upsert: true,
-        contentType: file.type,
-      });
-
-    if (uploadError) {
-      console.error('[COVER_UPLOAD_ERROR]', uploadError);
-      throw uploadError;
-    }
-
-    const { data } = supabase.storage
-      .from('profile-covers')
-      .getPublicUrl(path);
-
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .update({
-        cover_url: data.publicUrl,
-        updated_at: new Date().toISOString(),
-      })
       .eq('user_id', user.id);
-
-    if (dbError) {
-      console.error('[COVER_DB_ERROR]', dbError);
-      throw dbError;
-    }
-
-    setDraft((p: any) => ({ ...p, cover_url: data.publicUrl }));
   };
 
   const name =
@@ -118,51 +69,34 @@ export default function ProfileScreen() {
 
   return (
     <div className="relative">
+      {/* COVER */}
+      <ProfileCover
+        coverUrl={draft.cover_url}
+        onUploaded={(path) =>
+          setDraft((p: any) => ({ ...p, cover_url: path }))
+        }
+      />
 
-      {/* ================= COVER ================= */}
-      <div className="relative -mt-6 -mx-8">
-        <div className="h-60 bg-gradient-to-r from-neutral-900 to-neutral-700 relative">
-          <input
-            type="file"
-            hidden
-            id="cover-upload"
-            accept="image/*"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              await uploadCover(file);
-            }}
-          />
-          <label
-            htmlFor="cover-upload"
-            className="absolute right-6 bottom-4 cursor-pointer text-white/80 hover:text-white"
-          >
-            <Camera className="w-5 h-5" />
-          </label>
-        </div>
-      </div>
-
-      {/* ================= HEADER ================= */}
+      {/* HEADER */}
       <div className="px-8">
         <div className="flex items-end gap-6 -mt-16">
-          <Avatar profile={profile} size={144} editable />
+          <Avatar profile={draft} editable />
           <div className="pb-2">
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold">{name}</h1>
-              <span className="text-xs px-2 py-1 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
+              <span className="text-xs px-2 py-1 rounded-full bg-neutral-200 dark:bg-neutral-800">
                 Inactive
               </span>
             </div>
-            <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            <div className="text-sm text-neutral-500">
               {draft.job_title || '—'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ================= CONTENT ================= */}
+      {/* CONTENT */}
       <div className="px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-
         <EditableCard
           title="Personal details"
           onEdit={() =>
@@ -212,160 +146,58 @@ export default function ProfileScreen() {
           )}
         </EditableCard>
       </div>
-
-      {/* ================= SECURITY ================= */}
-      <div className="px-8 mt-6">
-        <Card title="Security">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium">Password</div>
-              <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                Last updated unknown
-              </div>
-            </div>
-            <button className="px-4 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700">
-              Reset password
-            </button>
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }
 
-/* ================= EDITABLE CARD ================= */
+/* ---------- SHARED UI ---------- */
 
-function EditableCard({
-  title,
-  children,
-  onEdit,
-  onCancel,
-  onSave,
-}: {
-  title: string;
-  children: (mode: Mode) => React.ReactNode;
-  onEdit?: () => void;
-  onCancel?: () => void;
-  onSave?: () => Promise<void> | void;
-}) {
+function EditableCard({ title, children, onEdit, onCancel, onSave }: any) {
   const [mode, setMode] = useState<Mode>('view');
 
   return (
-    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
-      <div className="flex items-center justify-between mb-4">
+    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900">
+      <div className="flex justify-between mb-4">
         <div className="font-semibold">{title}</div>
-
         {mode === 'view' ? (
-          <button
-            onClick={() => {
-              onEdit?.();
-              setMode('edit');
-            }}
-            className="text-sm text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
-          >
-            Edit
-          </button>
+          <button onClick={() => { onEdit?.(); setMode('edit'); }} className="text-sm">Edit</button>
         ) : (
           <div className="flex gap-2">
-            <button
-              onClick={() => {
-                onCancel?.();
-                setMode('view');
-              }}
-              className="px-3 py-1.5 text-sm border rounded-md"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={async () => {
-                await onSave?.();
-                setMode('view');
-              }}
-              className="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white"
-            >
+            <button onClick={() => { onCancel?.(); setMode('view'); }}>Cancel</button>
+            <button onClick={async () => { await onSave?.(); setMode('view'); }} className="bg-green-600 text-white px-3 rounded">
               Save
             </button>
           </div>
         )}
       </div>
-
-      <div className="space-y-3">{children(mode)}</div>
+      {children(mode)}
     </div>
   );
 }
 
-/* ================= FIELD ================= */
-
-function Field({
-  label,
-  value,
-  mode,
-  onSave,
-}: {
-  label: string;
-  value?: string;
-  mode: Mode;
-  onSave: (v: string) => void;
-}) {
-  const [inline, setInline] = useState(false);
+function Field({ label, value, mode, onSave }: any) {
   const [local, setLocal] = useState(value || '');
-
-  useEffect(() => {
-    setLocal(value || '');
-  }, [value]);
-
-  const editing = mode === 'edit' || inline;
+  useEffect(() => setLocal(value || ''), [value]);
 
   return (
-    <div className="grid grid-cols-3 gap-4 items-center text-sm group">
-      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
-
+    <div className="grid grid-cols-3 gap-4 text-sm">
+      <div>{label}</div>
       <div className="col-span-2">
-        {editing ? (
-          <input
-            autoFocus={inline}
-            value={local}
-            onChange={(e) => setLocal(e.target.value)}
-            onBlur={() => {
-              setInline(false);
-              onSave(local);
-            }}
-            className="w-full rounded-md px-3 py-2 text-sm border"
-          />
+        {mode === 'edit' ? (
+          <input value={local} onChange={(e) => setLocal(e.target.value)} onBlur={() => onSave(local)} className="border px-2 py-1 w-full" />
         ) : (
-          <div className="flex items-center justify-between">
-            <span>{value || '—'}</span>
-            <button
-              onClick={() => setInline(true)}
-              className="opacity-0 group-hover:opacity-100 text-neutral-400"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
-          </div>
+          <span>{value || '—'}</span>
         )}
       </div>
     </div>
   );
 }
 
-/* ================= STATIC FIELD ================= */
-
-function StaticField({ label, value }: { label: string; value?: string }) {
+function StaticField({ label, value }: any) {
   return (
-    <div className="grid grid-cols-3 gap-4 items-center text-sm">
-      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
+    <div className="grid grid-cols-3 gap-4 text-sm">
+      <div>{label}</div>
       <div className="col-span-2">{value || '—'}</div>
-    </div>
-  );
-}
-
-/* ================= CARD ================= */
-
-function Card({ title, children }: any) {
-  return (
-    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
-      <div className="font-semibold mb-4">{title}</div>
-      {children}
     </div>
   );
 }
