@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, Camera } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import Avatar from '@/components/profile/Avatar';
+import ProfileCover from '@/components/profile/ProfileCover';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Mode = 'view' | 'edit';
@@ -26,10 +27,8 @@ export default function ProfileScreen() {
 
   /* ---------- SNAPSHOT / RESTORE ---------- */
   const snapshot = (id: string, fields: string[]) => {
-    snapshots.current[id] = fields.reduce((a: any, f) => {
-      a[f] = draft[f];
-      return a;
-    }, {});
+    snapshots.current[id] = {};
+    fields.forEach((f) => (snapshots.current[id][f] = draft[f]));
   };
 
   const restore = (id: string) => {
@@ -37,7 +36,7 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
-  /* ---------- DB SAVE (AUTH UID – FINAL FIX) ---------- */
+  /* ---------- DB SAVE ---------- */
   const saveFields = async (fields: string[]) => {
     const payload: any = {};
 
@@ -48,12 +47,9 @@ export default function ProfileScreen() {
     });
 
     const supabase = supabaseBrowser();
+    const { data } = await supabase.auth.getUser();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) throw new Error('Not authenticated');
+    if (!data.user) throw new Error('Not authenticated');
 
     const { error } = await supabase
       .from('profiles')
@@ -61,56 +57,9 @@ export default function ProfileScreen() {
         ...payload,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', user.id); // ✅ SINGLE SOURCE OF TRUTH
+      .eq('user_id', data.user.id);
 
-    if (error) {
-      console.error('[PROFILE_SAVE_ERROR]', error);
-      throw error;
-    }
-  };
-
-  /* ---------- COVER UPLOAD (AUTH UID – FINAL FIX) ---------- */
-  const uploadCover = async (file: File) => {
-    const supabase = supabaseBrowser();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) throw new Error('Not authenticated');
-
-    const path = `${user.id}.jpg`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('profile-covers')
-      .upload(path, file, {
-        upsert: true,
-        contentType: file.type,
-      });
-
-    if (uploadError) {
-      console.error('[COVER_UPLOAD_ERROR]', uploadError);
-      throw uploadError;
-    }
-
-    const { data } = supabase.storage
-      .from('profile-covers')
-      .getPublicUrl(path);
-
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .update({
-        cover_url: data.publicUrl,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
-
-    if (dbError) {
-      console.error('[COVER_DB_ERROR]', dbError);
-      throw dbError;
-    }
-
-    setDraft((p: any) => ({ ...p, cover_url: data.publicUrl }));
+    if (error) throw error;
   };
 
   const name =
@@ -120,40 +69,25 @@ export default function ProfileScreen() {
     <div className="relative">
 
       {/* ================= COVER ================= */}
-      <div className="relative -mt-6 -mx-8">
-        <div className="h-60 bg-gradient-to-r from-neutral-900 to-neutral-700 relative">
-          <input
-            type="file"
-            hidden
-            id="cover-upload"
-            accept="image/*"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              await uploadCover(file);
-            }}
-          />
-          <label
-            htmlFor="cover-upload"
-            className="absolute right-6 bottom-4 cursor-pointer text-white/80 hover:text-white"
-          >
-            <Camera className="w-5 h-5" />
-          </label>
-        </div>
-      </div>
+      <ProfileCover
+        coverUrl={draft.cover_url}
+        onUploaded={(url) =>
+          setDraft((p: any) => ({ ...p, cover_url: url }))
+        }
+      />
 
       {/* ================= HEADER ================= */}
       <div className="px-8">
         <div className="flex items-end gap-6 -mt-16">
-          <Avatar profile={profile} size={144} editable />
+          <Avatar profile={draft} size={144} editable />
           <div className="pb-2">
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold">{name}</h1>
-              <span className="text-xs px-2 py-1 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
+              <span className="text-xs px-2 py-1 rounded-full bg-neutral-200 text-neutral-700">
                 Inactive
               </span>
             </div>
-            <div className="text-sm text-neutral-500 dark:text-neutral-400">
+            <div className="text-sm text-neutral-500">
               {draft.job_title || '—'}
             </div>
           </div>
@@ -185,7 +119,7 @@ export default function ProfileScreen() {
             ])
           }
         >
-          {(mode) => (
+          {(mode: Mode) => (
             <>
               <Field label="First name" value={draft.first_name} mode={mode} onSave={(v) => update('first_name', v)} />
               <Field label="Last name" value={draft.last_name} mode={mode} onSave={(v) => update('last_name', v)} />
@@ -203,7 +137,7 @@ export default function ProfileScreen() {
           onCancel={() => restore('address')}
           onSave={() => saveFields(['address_line', 'country', 'zip'])}
         >
-          {(mode) => (
+          {(mode: Mode) => (
             <>
               <Field label="Address line" value={draft.address_line} mode={mode} onSave={(v) => update('address_line', v)} />
               <Field label="Country" value={draft.country} mode={mode} onSave={(v) => update('country', v)} />
@@ -219,11 +153,11 @@ export default function ProfileScreen() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium">Password</div>
-              <div className="text-sm text-neutral-500 dark:text-neutral-400">
+              <div className="text-sm text-neutral-500">
                 Last updated unknown
               </div>
             </div>
-            <button className="px-4 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700">
+            <button className="px-4 py-2 text-sm rounded-md bg-green-600 text-white">
               Reset password
             </button>
           </div>
@@ -251,7 +185,7 @@ function EditableCard({
   const [mode, setMode] = useState<Mode>('view');
 
   return (
-    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+    <div className="border rounded-lg p-6 bg-white border-neutral-200">
       <div className="flex items-center justify-between mb-4">
         <div className="font-semibold">{title}</div>
 
@@ -261,7 +195,7 @@ function EditableCard({
               onEdit?.();
               setMode('edit');
             }}
-            className="text-sm text-neutral-500 hover:text-neutral-800 dark:text-neutral-400"
+            className="text-sm text-neutral-500"
           >
             Edit
           </button>
@@ -318,7 +252,7 @@ function Field({
 
   return (
     <div className="grid grid-cols-3 gap-4 items-center text-sm group">
-      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
+      <div className="text-neutral-500">{label}</div>
 
       <div className="col-span-2">
         {editing ? (
@@ -353,7 +287,7 @@ function Field({
 function StaticField({ label, value }: { label: string; value?: string }) {
   return (
     <div className="grid grid-cols-3 gap-4 items-center text-sm">
-      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
+      <div className="text-neutral-500">{label}</div>
       <div className="col-span-2">{value || '—'}</div>
     </div>
   );
@@ -363,7 +297,7 @@ function StaticField({ label, value }: { label: string; value?: string }) {
 
 function Card({ title, children }: any) {
   return (
-    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+    <div className="border rounded-lg p-6 bg-white border-neutral-200">
       <div className="font-semibold mb-4">{title}</div>
       {children}
     </div>

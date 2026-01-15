@@ -7,12 +7,10 @@ export default function Avatar({
   profile,
   size = 144,
   editable,
-  onUploaded,
 }: {
   profile: any;
   size?: number;
   editable?: boolean;
-  onUploaded?: (url: string) => void;
 }) {
   const uploadAvatar = async (file: File) => {
     const supabase = supabaseBrowser();
@@ -23,7 +21,7 @@ export default function Avatar({
 
     if (!user) throw new Error('Not authenticated');
 
-    const path = `${user.id}.jpg`;
+    const path = `${user.id}/avatar.jpg`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
@@ -45,18 +43,16 @@ export default function Avatar({
       .eq('user_id', user.id);
 
     if (dbError) throw dbError;
-
-    onUploaded?.(data.publicUrl);
   };
 
-  const avatarUrl =
-    profile?.avatar_url ||
-    `https://ui-avatars.com/api/?name=${profile?.email}&background=E5E7EB&color=111827`;
+  const avatarSrc =
+    profile.avatar_url ||
+    `https://ui-avatars.com/api/?name=${profile.email}&background=E5E7EB&color=111827`;
 
   return (
     <div className="relative">
       <img
-        src={avatarUrl}
+        src={avatarSrc}
         alt="Avatar"
         className="rounded-full object-cover border bg-white"
         style={{ width: size, height: size }}
@@ -65,20 +61,20 @@ export default function Avatar({
       {editable && (
         <>
           <input
-            id="avatar-upload"
             type="file"
-            accept="image/*"
             hidden
+            id="avatar-upload"
+            accept="image/*"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadAvatar(f);
+              const file = e.target.files?.[0];
+              if (file) uploadAvatar(file);
             }}
           />
           <label
             htmlFor="avatar-upload"
-            className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white border shadow p-2 hover:bg-neutral-100"
+            className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-white border shadow p-2"
           >
-            <Camera className="h-4 w-4 text-neutral-700" />
+            <Camera className="w-4 h-4 text-neutral-700" />
           </label>
         </>
       )}

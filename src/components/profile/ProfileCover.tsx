@@ -5,14 +5,12 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function ProfileCover({
   coverUrl,
-  editable,
   onUploaded,
 }: {
   coverUrl?: string;
-  editable?: boolean;
-  onUploaded?: (url: string) => void;
+  onUploaded: (url: string) => void;
 }) {
-  const uploadCover = async (file: File) => {
+  const upload = async (file: File) => {
     const supabase = supabaseBrowser();
 
     const {
@@ -23,20 +21,17 @@ export default function ProfileCover({
 
     const path = `${user.id}.jpg`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error } = await supabase.storage
       .from('profile-covers')
-      .upload(path, file, {
-        upsert: true,
-        contentType: file.type,
-      });
+      .upload(path, file, { upsert: true });
 
-    if (uploadError) throw uploadError;
+    if (error) throw error;
 
     const { data } = supabase.storage
       .from('profile-covers')
       .getPublicUrl(path);
 
-    const { error: dbError } = await supabase
+    await supabase
       .from('profiles')
       .update({
         cover_url: data.publicUrl,
@@ -44,40 +39,43 @@ export default function ProfileCover({
       })
       .eq('user_id', user.id);
 
-    if (dbError) throw dbError;
-
-    onUploaded?.(data.publicUrl);
+    onUploaded(data.publicUrl);
   };
 
   return (
-    <div className="relative h-60 bg-neutral-800">
-      {coverUrl && (
-        <img
-          src={coverUrl}
-          className="absolute inset-0 h-full w-full object-cover"
+    /* 🔑 RESTORED FULL-BLEED ALIGNMENT */
+    <div className="relative -mt-6 -mx-8">
+      <div
+        className="h-60 relative bg-neutral-800"
+        style={{
+          backgroundImage: coverUrl ? `url(${coverUrl})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <input
+          type="file"
+          hidden
+          id="cover-upload"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) upload(file);
+          }}
         />
-      )}
 
-      {editable && (
-        <>
-          <input
-            type="file"
-            hidden
-            id="cover-upload"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadCover(f);
-            }}
-          />
-          <label
-            htmlFor="cover-upload"
-            className="absolute right-6 bottom-4 cursor-pointer text-white/90 hover:text-white"
-          >
-            <Camera className="w-5 h-5" />
-          </label>
-        </>
-      )}
+        <label
+          htmlFor="cover-upload"
+          className="
+            absolute right-6 bottom-4
+            cursor-pointer
+            text-white/80 hover:text-white
+          "
+          title="Change cover"
+        >
+          <Camera className="w-5 h-5" />
+        </label>
+      </div>
     </div>
   );
 }
