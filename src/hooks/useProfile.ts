@@ -1,40 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-export type Profile = {
-  user_id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  mobile: string | null;
-  job_title: string | null;
-  avatar_url: string | null;
-  cover_url?: string | null;
-};
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export function useProfile() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      try {
-        const res = await fetch('/api/profile', {
-          cache: 'no-store',        // ✅ IMPORTANT
-          credentials: 'include',   // ✅ IMPORTANT
-        });
+      const supabase = supabaseBrowser();
+      const { data: session } = await supabase.auth.getSession();
 
-        if (!res.ok) {
-          setProfile(null);
-          return;
-        }
+      const res = await fetch('/api/profile', {
+        headers: {
+          Authorization: `Bearer ${session?.session?.access_token}`,
+        },
+      });
 
+      if (res.ok) {
         const data = await res.json();
         setProfile(data);
-      } finally {
-        setLoading(false);
       }
+
+      setLoading(false);
     };
 
     load();
