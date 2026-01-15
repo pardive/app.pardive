@@ -19,12 +19,12 @@ export default function ProfileScreen() {
 
   if (!profile) return null;
 
-  /* ---------- LOCAL UPDATE (UNCHANGED) ---------- */
+  /* ---------- LOCAL UPDATE ---------- */
   const update = (key: string, value: string) => {
     setDraft((p: any) => ({ ...p, [key]: value }));
   };
 
-  /* ---------- SNAPSHOT / RESTORE (UNCHANGED) ---------- */
+  /* ---------- SNAPSHOT / RESTORE ---------- */
   const snapshot = (id: string, fields: string[]) => {
     snapshots.current[id] = fields.reduce((a: any, f) => {
       a[f] = draft[f];
@@ -37,12 +37,11 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
-  /* ---------- DB SAVE (SAFE + MAPPED) ---------- */
+  /* ---------- DB SAVE (FIXED) ---------- */
   const saveFields = async (fields: string[]) => {
     const payload: any = {};
 
     fields.forEach((key) => {
-      // map UI fields → DB columns (NO UI CHANGE)
       if (key === 'role') payload.job_title = draft.role;
       else if (key === 'mobile') payload.phone = draft.mobile;
       else payload[key] = draft[key];
@@ -56,7 +55,8 @@ export default function ProfileScreen() {
         ...payload,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', profile.user_id);
+      // ✅ IMPORTANT FIX: use profile.id (auth uid)
+      .eq('user_id', profile.id);
 
     if (error) {
       console.error('[PROFILE_SAVE_ERROR]', error);
@@ -64,10 +64,10 @@ export default function ProfileScreen() {
     }
   };
 
-  /* ---------- COVER UPLOAD (SAFE) ---------- */
+  /* ---------- COVER UPLOAD (FIXED) ---------- */
   const uploadCover = async (file: File) => {
     const supabase = supabaseBrowser();
-    const path = `${profile.user_id}.jpg`;
+    const path = `${profile.id}.jpg`; // ✅ same fix
 
     const { error: uploadError } = await supabase.storage
       .from('profile-covers')
@@ -91,7 +91,7 @@ export default function ProfileScreen() {
         cover_url: data.publicUrl,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', profile.user_id);
+      .eq('user_id', profile.id); // ✅ same fix
 
     if (dbError) {
       console.error('[COVER_DB_ERROR]', dbError);
@@ -163,15 +163,15 @@ export default function ProfileScreen() {
             ])
           }
           onCancel={() => restore('personal')}
-          onSave={async () => {
-            await saveFields([
+          onSave={() =>
+            saveFields([
               'first_name',
               'last_name',
               'role',
               'mobile',
               'timezone',
-            ]);
-          }}
+            ])
+          }
         >
           {(mode) => (
             <>
@@ -189,9 +189,7 @@ export default function ProfileScreen() {
           title="Address"
           onEdit={() => snapshot('address', ['address_line', 'country', 'zip'])}
           onCancel={() => restore('address')}
-          onSave={async () => {
-            await saveFields(['address_line', 'country', 'zip']);
-          }}
+          onSave={() => saveFields(['address_line', 'country', 'zip'])}
         >
           {(mode) => (
             <>
@@ -236,17 +234,12 @@ function EditableCard({
   children: (mode: Mode) => React.ReactNode;
   onEdit?: () => void;
   onCancel?: () => void;
-  onSave?: () => Promise<void>;
+  onSave?: () => Promise<void> | void;
 }) {
   const [mode, setMode] = useState<Mode>('view');
 
   return (
-    <div className="
-      border rounded-lg p-6
-      bg-white dark:bg-neutral-900
-      border-neutral-200 dark:border-neutral-800
-      text-neutral-900 dark:text-neutral-100
-    ">
+    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
       <div className="flex items-center justify-between mb-4">
         <div className="font-semibold">{title}</div>
 
@@ -267,7 +260,7 @@ function EditableCard({
                 onCancel?.();
                 setMode('view');
               }}
-              className="px-3 py-1.5 text-sm border rounded-md border-neutral-300 dark:border-neutral-700"
+              className="px-3 py-1.5 text-sm border rounded-md"
             >
               Cancel
             </button>
@@ -325,19 +318,14 @@ function Field({
               setInline(false);
               onSave(local);
             }}
-            className="
-              w-full rounded-md px-3 py-2 text-sm
-              border border-neutral-300 dark:border-neutral-700
-              bg-white dark:bg-neutral-950
-              text-neutral-900 dark:text-neutral-100
-            "
+            className="w-full rounded-md px-3 py-2 text-sm border"
           />
         ) : (
           <div className="flex items-center justify-between">
             <span>{value || '—'}</span>
             <button
               onClick={() => setInline(true)}
-              className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-neutral-600"
+              className="opacity-0 group-hover:opacity-100 text-neutral-400"
             >
               <Pencil className="w-3 h-3" />
             </button>
@@ -363,12 +351,7 @@ function StaticField({ label, value }: { label: string; value?: string }) {
 
 function Card({ title, children }: any) {
   return (
-    <div className="
-      border rounded-lg p-6
-      bg-white dark:bg-neutral-900
-      border-neutral-200 dark:border-neutral-800
-      text-neutral-900 dark:text-neutral-100
-    ">
+    <div className="border rounded-lg p-6 bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
       <div className="font-semibold mb-4">{title}</div>
       {children}
     </div>
