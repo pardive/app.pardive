@@ -13,7 +13,7 @@ export default function Avatar({ profile, editable }: any) {
 
     if (!user) throw new Error('Not authenticated');
 
-    const path = `avatars/${user.id}.jpg`;
+    const path = `${user.id}/avatar.jpg`;
 
     // 1️⃣ Upload (single canonical path)
     const { error: uploadError } = await supabase.storage
