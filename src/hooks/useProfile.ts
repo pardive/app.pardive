@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-type Profile = {
+export type Profile = {
   user_id: string;
-  id: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -12,10 +11,6 @@ type Profile = {
   job_title: string | null;
   avatar_url: string | null;
   cover_url?: string | null;
-  timezone?: string | null;
-  address_line?: string | null;
-  country?: string | null;
-  zip?: string | null;
 };
 
 export function useProfile() {
@@ -23,16 +18,26 @@ export function useProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/profile')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: Profile | null) => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/profile', {
+          cache: 'no-store',        // ✅ IMPORTANT
+          credentials: 'include',   // ✅ IMPORTANT
+        });
+
+        if (!res.ok) {
+          setProfile(null);
+          return;
+        }
+
+        const data = await res.json();
         setProfile(data);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => {
-        setProfile(null);
-        setLoading(false);
-      });
+      }
+    };
+
+    load();
   }, []);
 
   return { profile, loading };
