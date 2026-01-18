@@ -1,11 +1,20 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Cropper from 'react-easy-crop';
-import { X, Trash2 } from 'lucide-react';
+import {
+  X,
+  Trash2,
+  Camera,
+  Minus,
+  Plus,
+  RotateCcw,
+  RotateCw,
+} from 'lucide-react';
 import clsx from 'clsx';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
-import { getCroppedImage } from './cropImage';
+
+/* ================= TYPES ================= */
 
 type AvatarUploadModalProps = {
   open: boolean;
@@ -14,6 +23,7 @@ type AvatarUploadModalProps = {
   onUpdated: (newPath: string | null) => void;
 };
 
+/* ================= COMPONENT ================= */
 
 export default function AvatarUploadModal({
   open,
@@ -22,27 +32,42 @@ export default function AvatarUploadModal({
   onUpdated,
 }: AvatarUploadModalProps) {
   const supabase = supabaseBrowser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  /* ================= RESET ================= */
+
+  useEffect(() => {
+    if (!open) {
+      setImageSrc(null);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+      setCroppedAreaPixels(null);
+    }
+  }, [open]);
 
   /* ================= FILE PICK ================= */
 
-  const onFileChange = (file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
-
+  const onFileSelect = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => setImageSrc(reader.result as string);
     reader.readAsDataURL(file);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   /* ================= CROP ================= */
 
-  const onCropComplete = useCallback((_area: any, pixels: any) => {
+  const onCropComplete = useCallback((_: any, pixels: any) => {
     setCroppedAreaPixels(pixels);
   }, []);
 
@@ -51,10 +76,37 @@ export default function AvatarUploadModal({
   const saveAvatar = async () => {
     if (!imageSrc || !croppedAreaPixels) return;
 
-    try {
-      setLoading(true);
+    setSaving(true);
 
-      const blob = await getCroppedImage(imageSrc, croppedAreaPixels);
+    try {
+      const image = new Image();
+      image.src = imageSrc;
+      await new Promise((res) => (image.onload = res));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = croppedAreaPixels.width;
+      canvas.height = croppedAreaPixels.height;
+
+      const ctx = canvas.getContext('2d')!;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height
+      );
+
+      const blob: Blob = await new Promise((res) =>
+        canvas.toBlob((b) => res(b!), 'image/jpeg', 0.92)
+      );
 
       const {
         data: { user },
@@ -62,20 +114,14 @@ export default function AvatarUploadModal({
 
       if (!user) throw new Error('Not authenticated');
 
-      const ext = 'jpg';
-      const version = Date.now();
-      const path = `${user.id}/avatar-${version}.${ext}`;
+      const path = `${user.id}/avatar-${Date.now()}.jpg`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, blob, {
-          upsert: false,
-          contentType: 'image/jpeg',
-        });
+      await supabase.storage.from('avatars').upload(path, blob, {
+        contentType: 'image/jpeg',
+        upsert: false,
+      });
 
-      if (uploadError) throw uploadError;
-
-      const { error: dbError } = await supabase
+      await supabase
         .from('profiles')
         .update({
           avatar_url: path,
@@ -83,13 +129,10 @@ export default function AvatarUploadModal({
         })
         .eq('user_id', user.id);
 
-      if (dbError) throw dbError;
-
-      // 🔑 instant UI update (NO reload)
       onUpdated(path);
       onClose();
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -119,91 +162,138 @@ export default function AvatarUploadModal({
   /* ================= RENDER ================= */
 
   return (
-    <div
-      className="fixed inset-0 z-[100000] bg-black/50 backdrop-blur-sm grid place-items-center"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-[420px] rounded-xl bg-white shadow-xl overflow-hidden"
-      >
+    <div className="fixed inset-0 z-[200000] bg-black/40 backdrop-blur-sm grid place-items-center">
+      <div className="w-[520px] bg-white rounded-md shadow-xl overflow-hidden">
         {/* HEADER */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
           <div className="font-medium">Update profile photo</div>
           <button onClick={onClose}>
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* BODY */}
-        <div className="p-4 space-y-4">
-          {!imageSrc ? (
-            <label className="block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-neutral-50">
-              <div className="text-sm text-neutral-600">
-                Upload image
-              </div>
-              <input
-                hidden
-                type="file"
-                accept="image/*"
-                onChange={(e) => onFileChange(e.target.files?.[0])}
-              />
-            </label>
+        <div className="p-5">
+          {imageSrc ? (
+            <div className="relative h-[300px] bg-black rounded-md overflow-hidden">
+  <Cropper
+    image={imageSrc}
+    crop={crop}
+    zoom={zoom}
+    rotation={rotation}
+    aspect={1}
+    cropShape="round"
+    showGrid={false}
+    onCropChange={setCrop}
+    onZoomChange={setZoom}
+    onCropComplete={onCropComplete}
+  />
+
+  {/* 🔑 THIS ONE LINE CREATES BLUR OUTSIDE THE CIRCLE */}
+  <div className="cropper-blur-overlay" />
+</div>
+
           ) : (
-            <>
-              <div className="relative w-full h-64 bg-neutral-900">
-                <Cropper
-                  image={imageSrc}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={onCropComplete}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-[300px] w-full border rounded-md grid place-items-center text-sm text-neutral-500 hover:bg-neutral-50"
+            >
+              Choose an image to upload
+            </button>
+          )}
+
+          {/* ================= CONTROLS ================= */}
+          {imageSrc && (
+            <div className="mt-5 flex items-center gap-4 text-sm">
+              {/* ZOOM — 40% */}
+              <div className="flex items-center gap-2 w-[40%]">
+                <button onClick={() => setZoom((z) => Math.max(1, z - 0.1))}>
+                  <Minus className="w-4 h-4" />
+                </button>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.05}
+                  value={zoom}
+                  onChange={(e) => setZoom(+e.target.value)}
+                  className="flex-1"
                 />
+                <button onClick={() => setZoom((z) => Math.min(3, z + 0.1))}>
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
 
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.01}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-              />
-            </>
+              {/* STRAIGHTEN — 40% */}
+              <div className="flex items-center gap-2 w-[40%]">
+                <span className="text-xs text-neutral-500 w-6">-180°</span>
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  step={1}
+                  value={rotation}
+                  onChange={(e) => setRotation(+e.target.value)}
+                  className="flex-1"
+                />
+                <span className="text-xs text-neutral-500 w-6">180°</span>
+              </div>
+
+              {/* ROTATE — 20% */}
+              <div className="flex justify-end gap-2 w-[20%]">
+                <button onClick={() => setRotation((r) => r - 90)}>
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+                <button onClick={() => setRotation((r) => r + 90)}>
+                  <RotateCw className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
         {/* FOOTER */}
-        <div className="flex items-center justify-between px-4 py-3 border-t">
-          <button
-            onClick={deleteAvatar}
-            className="flex items-center gap-2 text-sm text-red-600"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
+        <div className="flex items-center justify-between px-5 py-4 border-t">
+          <div className="flex items-center gap-6">
+            <button onClick={() => fileInputRef.current?.click()}>
+              <Camera className="w-6 h-6" />
+            </button>
+
+            {profile?.avatar_url && (
+              <button onClick={deleteAvatar}>
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </button>
+            )}
+          </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm border rounded-md"
-            >
+            <button onClick={onClose} className="px-4 py-2 border rounded-md">
               Cancel
             </button>
             <button
+              disabled={!imageSrc || saving}
               onClick={saveAvatar}
-              disabled={loading || !imageSrc}
               className={clsx(
-                'px-4 py-2 text-sm rounded-md text-white',
-                loading ? 'bg-neutral-400' : 'bg-green-600'
+                'px-4 py-2 rounded-md text-white',
+                saving ? 'bg-green-400' : 'bg-green-600'
               )}
             >
               Save
             </button>
           </div>
         </div>
+
+        {/* FILE INPUT */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) =>
+            e.target.files && onFileSelect(e.target.files[0])
+          }
+        />
       </div>
     </div>
   );

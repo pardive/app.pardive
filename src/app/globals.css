@@ -719,3 +719,17 @@ button {
     @apply bg-background;
   }
 }
+
+.cropper-blur-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  /* THIS IS THE MAGIC */
+  mask-image: radial-gradient(circle at center, transparent 52%, black 54%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 52%, black 54%);
+
+  pointer-events: none;
+}
+
