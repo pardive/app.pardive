@@ -33,13 +33,17 @@ type AvatarProps = {
   profile?: any;
   editable?: boolean;
   size?: number;
+  onClick?: () => void;
 };
+
 
 export default function Avatar({
   profile,
   editable = false,
   size = 144,
+  onClick,
 }: AvatarProps) {
+
   const supabase = supabaseBrowser();
   const [error, setError] = useState(false);
 
@@ -114,9 +118,10 @@ export default function Avatar({
 
   return (
     <div
-      className="relative shrink-0"
-      style={{ width: size, height: size }}
-    >
+  className="relative shrink-0 cursor-pointer"
+  style={{ width: size, height: size }}
+  onClick={onClick}
+>
       {showImage ? (
         <img
           src={avatarUrl}
@@ -137,15 +142,17 @@ export default function Avatar({
       )}
 
       {editable && (
-        <label className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-white border shadow flex items-center justify-center cursor-pointer hover:bg-neutral-100">
-          <Camera className="w-5 h-5 text-neutral-800" strokeWidth={1.8} />
-          <input
-            type="file"
-            hidden
-            accept="image/*"
-            onChange={(e) => e.target.files && upload(e.target.files[0])}
-          />
-        </label>
+<button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();   // 🔑 THIS IS THE FIX
+    onClick?.();           // open modal
+  }}
+  className="absolute bottom-1 right-1 w-10 h-10 rounded-full bg-white border shadow flex items-center justify-center hover:bg-neutral-100"
+>
+  <Camera className="w-5 h-5 text-neutral-800" strokeWidth={1.8} />
+</button>
+
       )}
     </div>
   );
