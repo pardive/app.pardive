@@ -188,14 +188,17 @@ export default function ProfileScreen() {
       </div>
 
       {/* ================= AVATAR MODAL ================= */}
-      <AvatarUploadModal
-        open={avatarOpen}
-        onClose={() => setAvatarOpen(false)}
-        profile={draft}
-        onUpdated={() => {
-          // optimistic refresh (simple + safe)
-          window.location.reload();
-        }}
+<AvatarUploadModal
+  open={avatarOpen}
+  onClose={() => setAvatarOpen(false)}
+  profile={draft}
+  onUpdated={(newPath) => {
+    setDraft((p: any) => ({
+      ...p,
+      avatar_url: newPath,
+      updated_at: new Date().toISOString(),
+    }));
+  }}
       />
     </div>
   );
