@@ -5,14 +5,19 @@ import { Pencil } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import Avatar from '@/components/profile/Avatar';
 import ProfileCover from '@/components/profile/ProfileCover';
+import AvatarUploadModal from '@/components/profile/AvatarUploadModal';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Mode = 'view' | 'edit';
 
 export default function ProfileScreen() {
   const { profile } = useProfile();
+
   const [draft, setDraft] = useState<any>({});
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const snapshots = useRef<Record<string, any>>({});
+
+  /* ================= INIT ================= */
 
   useEffect(() => {
     if (profile) setDraft(profile);
@@ -20,12 +25,14 @@ export default function ProfileScreen() {
 
   if (!profile) return null;
 
-  /* ---------- LOCAL UPDATE ---------- */
+  /* ================= LOCAL UPDATE ================= */
+
   const update = (key: string, value: string) => {
     setDraft((p: any) => ({ ...p, [key]: value }));
   };
 
-  /* ---------- SNAPSHOT / RESTORE ---------- */
+  /* ================= SNAPSHOT / RESTORE ================= */
+
   const snapshot = (id: string, fields: string[]) => {
     snapshots.current[id] = {};
     fields.forEach((f) => {
@@ -38,11 +45,11 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
-  /* ---------- DB SAVE (FIXED & CORRECT) ---------- */
+  /* ================= DB SAVE ================= */
+
   const saveFields = async (fields: string[]) => {
     const payload: Record<string, any> = {};
 
-    // 🔑 build payload correctly
     fields.forEach((key) => {
       payload[key] = draft[key] ?? null;
     });
@@ -60,18 +67,19 @@ export default function ProfileScreen() {
       })
       .eq('user_id', data.user.id);
 
-if (error) {
-  console.error('Profile update failed:', error);
-  throw new Error(error.message);
-}
+    if (error) {
+      console.error('Profile update failed:', error);
+      throw new Error(error.message);
+    }
   };
 
   const name =
     `${draft.first_name ?? ''} ${draft.last_name ?? ''}`.trim() || '—';
 
+  /* ================= RENDER ================= */
+
   return (
     <div className="relative">
-
       {/* ================= COVER ================= */}
       <ProfileCover
         coverUrl={draft.cover_url}
@@ -83,7 +91,13 @@ if (error) {
       {/* ================= HEADER ================= */}
       <div className="px-8">
         <div className="flex items-end gap-6 -mt-16">
-          <Avatar profile={draft} size={144} editable />
+          <Avatar
+            profile={draft}
+            size={144}
+            editable
+            onClick={() => setAvatarOpen(true)}
+          />
+
           <div className="pb-2">
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold">{name}</h1>
@@ -100,7 +114,7 @@ if (error) {
 
       {/* ================= CONTENT ================= */}
       <div className="px-8 mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-
+        {/* ---------- PERSONAL ---------- */}
         <EditableCard
           title="Personal details"
           onEdit={() =>
@@ -109,7 +123,7 @@ if (error) {
               'last_name',
               'job_title',
               'phone',
-              'time_zone',
+              'timezone',
             ])
           }
           onCancel={() => restore('personal')}
@@ -119,47 +133,23 @@ if (error) {
               'last_name',
               'job_title',
               'phone',
-              'time_zone',
+              'timezone',
             ])
           }
         >
-          {(mode: Mode) => (
+          {(mode) => (
             <>
-              <Field
-                label="First name"
-                value={draft.first_name}
-                mode={mode}
-                onSave={(v) => update('first_name', v)}
-              />
-              <Field
-                label="Last name"
-                value={draft.last_name}
-                mode={mode}
-                onSave={(v) => update('last_name', v)}
-              />
+              <Field label="First name" value={draft.first_name} mode={mode} onSave={(v) => update('first_name', v)} />
+              <Field label="Last name" value={draft.last_name} mode={mode} onSave={(v) => update('last_name', v)} />
               <StaticField label="Email" value={draft.email} />
-              <Field
-                label="Role"
-                value={draft.job_title}
-                mode={mode}
-                onSave={(v) => update('job_title', v)}
-              />
-              <Field
-                label="Phone"
-                value={draft.phone}
-                mode={mode}
-                onSave={(v) => update('phone', v)}
-              />
-              <Field
-                label="Timezone"
-                value={draft.time_zone}
-                mode={mode}
-                onSave={(v) => update('time_zone', v)}
-              />
+              <Field label="Role" value={draft.job_title} mode={mode} onSave={(v) => update('job_title', v)} />
+              <Field label="Phone" value={draft.phone} mode={mode} onSave={(v) => update('phone', v)} />
+              <Field label="Timezone" value={draft.timezone} mode={mode} onSave={(v) => update('timezone', v)} />
             </>
           )}
         </EditableCard>
 
+        {/* ---------- ADDRESS ---------- */}
         <EditableCard
           title="Address"
           onEdit={() =>
@@ -170,26 +160,11 @@ if (error) {
             saveFields(['address_line', 'country', 'zip'])
           }
         >
-          {(mode: Mode) => (
+          {(mode) => (
             <>
-              <Field
-                label="Address line"
-                value={draft.address_line}
-                mode={mode}
-                onSave={(v) => update('address_line', v)}
-              />
-              <Field
-                label="Country"
-                value={draft.country}
-                mode={mode}
-                onSave={(v) => update('country', v)}
-              />
-              <Field
-                label="ZIP / Postal code"
-                value={draft.zip}
-                mode={mode}
-                onSave={(v) => update('zip', v)}
-              />
+              <Field label="Address line" value={draft.address_line} mode={mode} onSave={(v) => update('address_line', v)} />
+              <Field label="Country" value={draft.country} mode={mode} onSave={(v) => update('country', v)} />
+              <Field label="ZIP / Postal code" value={draft.zip} mode={mode} onSave={(v) => update('zip', v)} />
             </>
           )}
         </EditableCard>
@@ -211,6 +186,17 @@ if (error) {
           </div>
         </Card>
       </div>
+
+      {/* ================= AVATAR MODAL ================= */}
+      <AvatarUploadModal
+        open={avatarOpen}
+        onClose={() => setAvatarOpen(false)}
+        profile={draft}
+        onUpdated={() => {
+          // optimistic refresh (simple + safe)
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
@@ -249,22 +235,10 @@ function EditableCard({
           </button>
         ) : (
           <div className="flex gap-2">
-            <button
-              onClick={() => {
-                onCancel?.();
-                setMode('view');
-              }}
-              className="px-3 py-1.5 text-sm border rounded-md"
-            >
+            <button onClick={() => { onCancel?.(); setMode('view'); }} className="px-3 py-1.5 text-sm border rounded-md">
               Cancel
             </button>
-            <button
-              onClick={async () => {
-                await onSave?.();
-                setMode('view');
-              }}
-              className="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white"
-            >
+            <button onClick={async () => { await onSave?.(); setMode('view'); }} className="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white">
               Save
             </button>
           </div>
@@ -301,7 +275,6 @@ function Field({
   return (
     <div className="grid grid-cols-3 gap-4 items-center text-sm group">
       <div className="text-neutral-500">{label}</div>
-
       <div className="col-span-2">
         {editing ? (
           <input
@@ -317,10 +290,7 @@ function Field({
         ) : (
           <div className="flex items-center justify-between">
             <span>{value || '—'}</span>
-            <button
-              onClick={() => setInline(true)}
-              className="opacity-0 group-hover:opacity-100 text-neutral-400"
-            >
+            <button onClick={() => setInline(true)} className="opacity-0 group-hover:opacity-100 text-neutral-400">
               <Pencil className="w-3 h-3" />
             </button>
           </div>
