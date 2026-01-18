@@ -3,15 +3,19 @@
 import clsx from 'clsx';
 import Link from 'next/link';
 import { ExternalLink, X } from 'lucide-react';
+import Avatar from '@/components/profile/Avatar';
 
 type Props = {
   open: boolean;
   onClose: () => void;
+
   name?: string;
   jobTitle?: string;
   email?: string;
   mobile?: string;
   avatarUrl?: string;
+
+  profile?: any;
 };
 
 export default function ProfileQuickModal({
@@ -22,7 +26,19 @@ export default function ProfileQuickModal({
   email,
   mobile,
   avatarUrl,
+  profile,
 }: Props) {
+  const derivedProfile =
+    profile ??
+    {
+      first_name: name?.split(' ')[0],
+      last_name: name?.split(' ').slice(1).join(' '),
+      email,
+      job_title: jobTitle,
+      mobile,
+      avatar_url: avatarUrl,
+    };
+
   return (
     <div
       className={clsx(
@@ -33,34 +49,24 @@ export default function ProfileQuickModal({
       aria-modal="true"
       role="dialog"
     >
-      {/* perfect centering via grid */}
-      <div className="grid place-items-center min-h-screen p-3" onClick={(e) => e.stopPropagation()}>
-        <div
-          className="
-            w-[min(94vw,600px)]        /* <= tighter max width */
-            max-h-[85vh] overflow-auto
-            rounded-lg border border-neutral-200 dark:border-neutral-800
-            bg-white dark:bg-neutral-900 shadow-2xl
-          "
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
+      <div
+        className="grid place-items-center min-h-screen p-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-[min(94vw,600px)] rounded-lg border border-neutral-200 bg-white shadow-2xl">
+          {/* HEADER */}
+          <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="text-sm font-medium">My profile</div>
             <div className="flex items-center gap-1.5">
-                    <Link
-                    href="/profile"
-                    title="Open full page"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="grid place-items-center rounded-lg p-2 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                    >
-                    <ExternalLink className="w-4 h-4" />
-                    </Link>
-
+              <Link
+                href="/profile"
+                target="_blank"
+                className="grid place-items-center rounded-lg p-2 hover:bg-neutral-200"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Link>
               <button
-                type="button"
-                aria-label="Close"
-                className="grid place-items-center rounded-lg p-2 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                className="grid place-items-center rounded-lg p-2 hover:bg-neutral-200"
                 onClick={onClose}
               >
                 <X className="w-4 h-4" />
@@ -68,26 +74,24 @@ export default function ProfileQuickModal({
             </div>
           </div>
 
-          {/* Body */}
-          <div className="p-4 md:p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-lg overflow-hidden bg-neutral-200 dark:bg-neutral-800 shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    avatarUrl ||
-                    `https://api.dicebear.com/8.x/shapes/svg?seed=${encodeURIComponent(name || 'user')}`
-                  }
-                  alt="avatar"
-                  className="w-full h-full object-cover"
-                />
-              </div>
+          {/* BODY */}
+          <div className="p-4">
+            <div className="flex items-center gap-4">
+              <Avatar profile={derivedProfile} size={100} editable={false} />
 
               <div className="flex-1 space-y-2 text-[13px]">
-                <Field label="Name">{name || '—'}</Field>
-                <Field label="Job title">{jobTitle || '—'}</Field>
-                <Field label="Email">{email || '—'}</Field>
-                <Field label="Mobile">{mobile || '—'}</Field>
+                <Field label="Name">
+                  {`${derivedProfile.first_name ?? ''} ${derivedProfile.last_name ?? ''}`.trim() || '—'}
+                </Field>
+                <Field label="Job title">
+                  {derivedProfile.job_title || '—'}
+                </Field>
+                <Field label="Email">
+                  {derivedProfile.email || '—'}
+                </Field>
+                <Field label="Mobile">
+                  {derivedProfile.mobile || '—'}
+                </Field>
               </div>
             </div>
           </div>
@@ -101,7 +105,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="flex items-center gap-3">
       <div className="w-28 shrink-0 text-neutral-500">{label}</div>
-      <div className="text-neutral-900 dark:text-neutral-100">{children}</div>
+      <div className="text-neutral-900">{children}</div>
     </div>
   );
 }

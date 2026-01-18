@@ -29,7 +29,17 @@ function getColor(seed: string) {
   return COLORS[Math.abs(hash) % COLORS.length];
 }
 
-export default function Avatar({ profile, editable }: any) {
+type AvatarProps = {
+  profile?: any;
+  editable?: boolean;
+  size?: number;
+};
+
+export default function Avatar({
+  profile,
+  editable = false,
+  size = 144,
+}: AvatarProps) {
   const supabase = supabaseBrowser();
   const [error, setError] = useState(false);
 
@@ -59,7 +69,7 @@ export default function Avatar({ profile, editable }: any) {
     avatarUrl.startsWith('http') &&
     !error;
 
-  /* ============ UPLOAD (UNCHANGED, WORKING) ============ */
+  /* ================= UPLOAD ================= */
   const upload = async (file: File) => {
     const {
       data: { user },
@@ -86,19 +96,24 @@ export default function Avatar({ profile, editable }: any) {
 
   /* ================= RENDER ================= */
   return (
-    <div className="relative w-36 h-36">
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+    >
       {showImage ? (
         <img
-  src={avatarUrl}
-  alt="Avatar"
-  onError={() => setError(true)}
-  className="w-36 h-36 rounded-full object-cover border bg-white"
-/>
-
+          src={avatarUrl}
+          alt="Avatar"
+          onError={() => setError(true)}
+          className="w-full h-full rounded-full object-cover border bg-white"
+        />
       ) : (
         <div
-          className="w-36 h-36 rounded-full flex items-center justify-center text-white text-4xl font-medium border"
-          style={{ backgroundColor: bgColor }}
+          className="w-full h-full rounded-full flex items-center justify-center text-white font-medium border"
+          style={{
+            backgroundColor: bgColor,
+            fontSize: Math.floor(size * 0.4),
+          }}
         >
           {initials}
         </div>
