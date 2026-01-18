@@ -28,7 +28,9 @@ export default function ProfileScreen() {
   /* ---------- SNAPSHOT / RESTORE ---------- */
   const snapshot = (id: string, fields: string[]) => {
     snapshots.current[id] = {};
-    fields.forEach((f) => (snapshots.current[id][f] = draft[f]));
+    fields.forEach((f) => {
+      snapshots.current[id][f] = draft[f];
+    });
   };
 
   const restore = (id: string) => {
@@ -36,9 +38,14 @@ export default function ProfileScreen() {
     setDraft((p: any) => ({ ...p, ...snapshots.current[id] }));
   };
 
-  /* ---------- DB SAVE ---------- */
+  /* ---------- DB SAVE (FIXED & CORRECT) ---------- */
   const saveFields = async (fields: string[]) => {
-    const payload: any = {};
+    const payload: Record<string, any> = {};
+
+    // 🔑 build payload correctly
+    fields.forEach((key) => {
+      payload[key] = draft[key] ?? null;
+    });
 
     const supabase = supabaseBrowser();
     const { data } = await supabase.auth.getUser();
@@ -94,14 +101,13 @@ export default function ProfileScreen() {
         <EditableCard
           title="Personal details"
           onEdit={() =>
-          snapshot('personal', [
-            'first_name',
-            'last_name',
-            'job_title',
-            'phone',
-            'timezone',
-          ])
-
+            snapshot('personal', [
+              'first_name',
+              'last_name',
+              'job_title',
+              'phone',
+              'timezone',
+            ])
           }
           onCancel={() => restore('personal')}
           onSave={() =>
@@ -116,28 +122,71 @@ export default function ProfileScreen() {
         >
           {(mode: Mode) => (
             <>
-              <Field label="First name" value={draft.first_name} mode={mode} onSave={(v) => update('first_name', v)} />
-              <Field label="Last name" value={draft.last_name} mode={mode} onSave={(v) => update('last_name', v)} />
+              <Field
+                label="First name"
+                value={draft.first_name}
+                mode={mode}
+                onSave={(v) => update('first_name', v)}
+              />
+              <Field
+                label="Last name"
+                value={draft.last_name}
+                mode={mode}
+                onSave={(v) => update('last_name', v)}
+              />
               <StaticField label="Email" value={draft.email} />
-              <Field label="Role" value={draft.job_title} mode={mode} onSave={(v) => update('job_title', v)} />
-              <Field label="Phone" value={draft.phone} mode={mode} onSave={(v) => update('phone', v)} />
-              <Field label="Timezone" value={draft.timezone} mode={mode} onSave={(v) => update('timezone', v)} />
-
+              <Field
+                label="Role"
+                value={draft.job_title}
+                mode={mode}
+                onSave={(v) => update('job_title', v)}
+              />
+              <Field
+                label="Phone"
+                value={draft.phone}
+                mode={mode}
+                onSave={(v) => update('phone', v)}
+              />
+              <Field
+                label="Timezone"
+                value={draft.timezone}
+                mode={mode}
+                onSave={(v) => update('timezone', v)}
+              />
             </>
           )}
         </EditableCard>
 
         <EditableCard
           title="Address"
-          onEdit={() => snapshot('address', ['address_line', 'country', 'zip'])}
+          onEdit={() =>
+            snapshot('address', ['address_line', 'country', 'zip'])
+          }
           onCancel={() => restore('address')}
-          onSave={() => saveFields(['address_line', 'country', 'zip'])}
+          onSave={() =>
+            saveFields(['address_line', 'country', 'zip'])
+          }
         >
           {(mode: Mode) => (
             <>
-              <Field label="Address line" value={draft.address_line} mode={mode} onSave={(v) => update('address_line', v)} />
-              <Field label="Country" value={draft.country} mode={mode} onSave={(v) => update('country', v)} />
-              <Field label="ZIP / Postal code" value={draft.zip} mode={mode} onSave={(v) => update('zip', v)} />
+              <Field
+                label="Address line"
+                value={draft.address_line}
+                mode={mode}
+                onSave={(v) => update('address_line', v)}
+              />
+              <Field
+                label="Country"
+                value={draft.country}
+                mode={mode}
+                onSave={(v) => update('country', v)}
+              />
+              <Field
+                label="ZIP / Postal code"
+                value={draft.zip}
+                mode={mode}
+                onSave={(v) => update('zip', v)}
+              />
             </>
           )}
         </EditableCard>
