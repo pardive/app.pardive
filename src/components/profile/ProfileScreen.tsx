@@ -60,7 +60,10 @@ export default function ProfileScreen() {
       })
       .eq('user_id', data.user.id);
 
-    if (error) throw error;
+if (error) {
+  console.error('Profile update failed:', error);
+  throw new Error(error.message);
+}
   };
 
   const name =
@@ -106,7 +109,7 @@ export default function ProfileScreen() {
               'last_name',
               'job_title',
               'phone',
-              'timezone',
+              'time_zone',
             ])
           }
           onCancel={() => restore('personal')}
@@ -116,7 +119,7 @@ export default function ProfileScreen() {
               'last_name',
               'job_title',
               'phone',
-              'timezone',
+              'time_zone',
             ])
           }
         >
@@ -149,9 +152,9 @@ export default function ProfileScreen() {
               />
               <Field
                 label="Timezone"
-                value={draft.timezone}
+                value={draft.time_zone}
                 mode={mode}
-                onSave={(v) => update('timezone', v)}
+                onSave={(v) => update('time_zone', v)}
               />
             </>
           )}

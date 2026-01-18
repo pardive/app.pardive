@@ -47,6 +47,8 @@ export default function Avatar({
   const lastName = profile?.last_name;
   const email = profile?.email;
 
+  /* ================= DERIVED ================= */
+
   const initials = useMemo(
     () => getInitials(firstName, lastName, email),
     [firstName, lastName, email]
@@ -60,21 +62,18 @@ export default function Avatar({
   const avatarUrl = useMemo(() => {
     if (!profile?.avatar_url) return null;
 
-    const { publicUrl } = supabase.storage
+    return supabase.storage
       .from('avatars')
-      .getPublicUrl(profile.avatar_url).data;
-
-    if (!publicUrl) return null;
-
-    return `${publicUrl}?v=${profile.updated_at}`;
-  }, [profile?.avatar_url, profile?.updated_at, supabase]);
+      .getPublicUrl(profile.avatar_url).data.publicUrl;
+  }, [profile?.avatar_url, supabase]);
 
   const showImage =
     typeof avatarUrl === 'string' &&
     avatarUrl.startsWith('http') &&
     !error;
 
-  /* ================= UPLOAD ================= */
+  /* ================= UPLOAD (CACHE-SAFE) ================= */
+
   const upload = async (file: File) => {
     const {
       data: { user },
@@ -82,13 +81,22 @@ export default function Avatar({
 
     if (!user) throw new Error('Not authenticated');
 
-    const path = `${user.id}/avatar.jpg`;
+    const ext = file.name.split('.').pop() || 'jpg';
+    const version = Date.now();
 
-    await supabase.storage
+    // 🔑 CRITICAL: new object path every upload
+    const path = `${user.id}/avatar-${version}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
 
-    await supabase
+    if (uploadError) throw uploadError;
+
+    const { error: dbError } = await supabase
       .from('profiles')
       .update({
         avatar_url: path,
@@ -96,10 +104,14 @@ export default function Avatar({
       })
       .eq('user_id', user.id);
 
-    // ❌ no reload needed anymore
+    if (dbError) throw dbError;
+
+    // 🔄 keeps rest of app in sync (safe, optional later)
+    window.location.reload();
   };
 
   /* ================= RENDER ================= */
+
   return (
     <div
       className="relative shrink-0"
