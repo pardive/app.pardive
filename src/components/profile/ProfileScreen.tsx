@@ -40,12 +40,6 @@ export default function ProfileScreen() {
   const saveFields = async (fields: string[]) => {
     const payload: any = {};
 
-    fields.forEach((key) => {
-      if (key === 'role') payload.job_title = draft.role;
-      else if (key === 'mobile') payload.phone = draft.mobile;
-      else payload[key] = draft[key];
-    });
-
     const supabase = supabaseBrowser();
     const { data } = await supabase.auth.getUser();
 
@@ -100,21 +94,22 @@ export default function ProfileScreen() {
         <EditableCard
           title="Personal details"
           onEdit={() =>
-            snapshot('personal', [
-              'first_name',
-              'last_name',
-              'role',
-              'mobile',
-              'timezone',
-            ])
+          snapshot('personal', [
+            'first_name',
+            'last_name',
+            'job_title',
+            'phone',
+            'timezone',
+          ])
+
           }
           onCancel={() => restore('personal')}
           onSave={() =>
             saveFields([
               'first_name',
               'last_name',
-              'role',
-              'mobile',
+              'job_title',
+              'phone',
               'timezone',
             ])
           }
@@ -124,9 +119,10 @@ export default function ProfileScreen() {
               <Field label="First name" value={draft.first_name} mode={mode} onSave={(v) => update('first_name', v)} />
               <Field label="Last name" value={draft.last_name} mode={mode} onSave={(v) => update('last_name', v)} />
               <StaticField label="Email" value={draft.email} />
-              <Field label="Role" value={draft.role} mode={mode} onSave={(v) => update('role', v)} />
-              <Field label="Phone" value={draft.mobile} mode={mode} onSave={(v) => update('mobile', v)} />
+              <Field label="Role" value={draft.job_title} mode={mode} onSave={(v) => update('job_title', v)} />
+              <Field label="Phone" value={draft.phone} mode={mode} onSave={(v) => update('phone', v)} />
               <Field label="Timezone" value={draft.timezone} mode={mode} onSave={(v) => update('timezone', v)} />
+
             </>
           )}
         </EditableCard>
