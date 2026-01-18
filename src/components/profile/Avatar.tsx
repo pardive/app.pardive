@@ -59,10 +59,15 @@ export default function Avatar({
 
   const avatarUrl = useMemo(() => {
     if (!profile?.avatar_url) return null;
-    return supabase.storage
+
+    const { publicUrl } = supabase.storage
       .from('avatars')
-      .getPublicUrl(profile.avatar_url).data.publicUrl;
-  }, [profile?.avatar_url, supabase]);
+      .getPublicUrl(profile.avatar_url).data;
+
+    if (!publicUrl) return null;
+
+    return `${publicUrl}?v=${profile.updated_at}`;
+  }, [profile?.avatar_url, profile?.updated_at, supabase]);
 
   const showImage =
     typeof avatarUrl === 'string' &&
@@ -91,7 +96,7 @@ export default function Avatar({
       })
       .eq('user_id', user.id);
 
-    window.location.reload();
+    // ❌ no reload needed anymore
   };
 
   /* ================= RENDER ================= */
