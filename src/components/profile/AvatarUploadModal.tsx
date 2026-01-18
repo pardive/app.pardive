@@ -7,19 +7,20 @@ import clsx from 'clsx';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getCroppedImage } from './cropImage';
 
-type Props = {
+type AvatarUploadModalProps = {
   open: boolean;
   onClose: () => void;
   profile: any;
-  onUpdated: () => void;
+  onUpdated: (newPath: string | null) => void;
 };
+
 
 export default function AvatarUploadModal({
   open,
   onClose,
   profile,
   onUpdated,
-}: Props) {
+}: AvatarUploadModalProps) {
   const supabase = supabaseBrowser();
 
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -28,8 +29,9 @@ export default function AvatarUploadModal({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  /* ---------- FILE PICK ---------- */
-  const onFileChange = async (file?: File) => {
+  /* ================= FILE PICK ================= */
+
+  const onFileChange = (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
 
@@ -38,12 +40,14 @@ export default function AvatarUploadModal({
     reader.readAsDataURL(file);
   };
 
-  /* ---------- CROP COMPLETE ---------- */
-  const onCropComplete = useCallback((_a: any, cropped: any) => {
-    setCroppedAreaPixels(cropped);
+  /* ================= CROP ================= */
+
+  const onCropComplete = useCallback((_area: any, pixels: any) => {
+    setCroppedAreaPixels(pixels);
   }, []);
 
-  /* ---------- SAVE ---------- */
+  /* ================= SAVE ================= */
+
   const saveAvatar = async () => {
     if (!imageSrc || !croppedAreaPixels) return;
 
@@ -51,22 +55,27 @@ export default function AvatarUploadModal({
       setLoading(true);
 
       const blob = await getCroppedImage(imageSrc, croppedAreaPixels);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) throw new Error('Not authenticated');
 
-      const path = `${user.id}/avatar.jpg`;
+      const ext = 'jpg';
+      const version = Date.now();
+      const path = `${user.id}/avatar-${version}.${ext}`;
 
-      await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, blob, {
-          upsert: true,
+          upsert: false,
           contentType: 'image/jpeg',
         });
 
-      await supabase
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
         .from('profiles')
         .update({
           avatar_url: path,
@@ -74,14 +83,18 @@ export default function AvatarUploadModal({
         })
         .eq('user_id', user.id);
 
-      onUpdated();
+      if (dbError) throw dbError;
+
+      // 🔑 instant UI update (NO reload)
+      onUpdated(path);
       onClose();
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------- DELETE ---------- */
+  /* ================= DELETE ================= */
+
   const deleteAvatar = async () => {
     const {
       data: { user },
@@ -97,11 +110,13 @@ export default function AvatarUploadModal({
       })
       .eq('user_id', user.id);
 
-    onUpdated();
+    onUpdated(null);
     onClose();
   };
 
   if (!open) return null;
+
+  /* ================= RENDER ================= */
 
   return (
     <div
@@ -112,7 +127,7 @@ export default function AvatarUploadModal({
         onClick={(e) => e.stopPropagation()}
         className="w-[420px] rounded-xl bg-white shadow-xl overflow-hidden"
       >
-        {/* Header */}
+        {/* HEADER */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="font-medium">Update profile photo</div>
           <button onClick={onClose}>
@@ -120,7 +135,7 @@ export default function AvatarUploadModal({
           </button>
         </div>
 
-        {/* Body */}
+        {/* BODY */}
         <div className="p-4 space-y-4">
           {!imageSrc ? (
             <label className="block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-neutral-50">
@@ -160,7 +175,7 @@ export default function AvatarUploadModal({
           )}
         </div>
 
-        {/* Footer */}
+        {/* FOOTER */}
         <div className="flex items-center justify-between px-4 py-3 border-t">
           <button
             onClick={deleteAvatar}
