@@ -191,15 +191,13 @@ export default function ProfileScreen() {
 <AvatarUploadModal
   open={avatarOpen}
   onClose={() => setAvatarOpen(false)}
-  profile={draft}
   onUpdated={(newPath) => {
     setDraft((p: any) => ({
       ...p,
       avatar_url: newPath,
-      updated_at: new Date().toISOString(),
     }));
   }}
-      />
+/>
     </div>
   );
 }
