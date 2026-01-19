@@ -220,7 +220,7 @@ function EditableCard({
   const [mode, setMode] = useState<Mode>('view');
 
   return (
-    <div className="border rounded-lg p-6 bg-white border-neutral-200">
+    <div className="border rounded-md p-6 bg-white border-neutral-200">
       <div className="flex items-center justify-between mb-4">
         <div className="font-semibold">{title}</div>
 
@@ -316,7 +316,7 @@ function StaticField({ label, value }: { label: string; value?: string }) {
 
 function Card({ title, children }: any) {
   return (
-    <div className="border rounded-lg p-6 bg-white border-neutral-200">
+    <div className="border rounded-md p-6 bg-white border-neutral-200">
       <div className="font-semibold mb-4">{title}</div>
       {children}
     </div>

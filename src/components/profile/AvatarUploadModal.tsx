@@ -293,7 +293,7 @@ export default function AvatarUploadModal({
 
   return (
     <div className="fixed inset-0 z-[200000] bg-black/60 backdrop-blur-sm grid place-items-center p-4">
-      <div className="w-full max-w-[480px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="w-full max-w-[480px] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b">
           <h3 className="font-bold text-xl">Profile Photo</h3>
@@ -367,13 +367,13 @@ export default function AvatarUploadModal({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setRotation((r) => r - 90)}
-                  className="p-2 rounded-lg hover:bg-neutral-100 transition"
+                  className="p-2 rounded-xl hover:bg-neutral-100 transition"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setRotation((r) => r + 90)}
-                  className="p-2 rounded-lg hover:bg-neutral-100 transition"
+                  className="p-2 rounded-xl hover:bg-neutral-100 transition"
                 >
                   <RotateCw className="w-4 h-4" />
                 </button>
